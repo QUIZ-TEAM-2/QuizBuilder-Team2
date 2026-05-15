@@ -14,7 +14,8 @@ export type ComponentType =
   | "ranking"
   | "input"
   | "matching"
-  | "slider";
+  | "slider"
+  | "bgm";
 
 export type ComponentCategory = "content";
 
@@ -184,6 +185,21 @@ export interface Image {
   _creationTime: number;
 }
 
+/**
+ * Audio entity from database
+ */
+export interface Audio {
+  _id: Id<"audios">;
+  name: string;
+  userId: Id<"users">;
+  storageId: Id<"_storage">;
+  format?: string;
+  size?: number;
+  hiddenFromPicker?: boolean;
+  url?: string | null;
+  _creationTime: number;
+}
+
 // ==========================================
 // EDITOR TYPES
 // ==========================================
@@ -215,11 +231,13 @@ export interface EditorActions {
       | "ranking"
       | "input"
       | "slider"
-      | "matching",
+      | "matching"
+      | "bgm",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
 
   // Clipboard
   onCopy?: () => void;

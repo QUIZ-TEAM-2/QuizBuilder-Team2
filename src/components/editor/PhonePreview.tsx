@@ -53,7 +53,8 @@ interface PhonePreviewProps {
       | "ranking"
       | "input"
       | "matching"
-      | "slider",
+      | "slider"
+      | "bgm",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
@@ -62,6 +63,7 @@ interface PhonePreviewProps {
   onUpdateData?: (data: string) => void;
   onDeleteComponent?: () => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
   onUpdateAction?: (
     action: PageAction | undefined,
     actionProps?: Record<string, unknown>,
@@ -100,6 +102,9 @@ interface PhonePreviewProps {
   ) => void;
   currentPageNumber?: number;
   totalPages?: number;
+  bgmMuted?: boolean;
+  bgmBlocked?: boolean;
+  onBGMToggleMute?: () => void;
   // Frameless mode - removes phone frame styling for full-screen play mode
   frameless?: boolean;
   selectedAnswers?: Component[];
@@ -126,6 +131,7 @@ interface PreviewWrapperProps {
   onUpdateData?: (data: string) => void;
   onDeleteComponent?: () => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
   onUpdateAction?: (
     action: PageAction | undefined,
     actionProps?: Record<string, unknown>,
@@ -164,6 +170,9 @@ interface PreviewWrapperProps {
   ) => void;
   currentPageNumber?: number;
   totalPages?: number;
+  bgmMuted?: boolean;
+  bgmBlocked?: boolean;
+  onBGMToggleMute?: () => void;
 }
 
 type TransitionSlideSnapshot = {
@@ -210,6 +219,7 @@ function PreviewComponentWrapper({
   onUpdateData,
   onDeleteComponent,
   onOpenImagePicker,
+  onOpenAudioPicker,
   onUpdateAction,
   onBringToFront,
   onSendToBack,
@@ -230,6 +240,9 @@ function PreviewComponentWrapper({
   onSliderChange,
   currentPageNumber,
   totalPages,
+  bgmMuted,
+  bgmBlocked,
+  onBGMToggleMute,
 }: PreviewWrapperProps & { component: Component }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<ResizeHandle>(null);
@@ -648,6 +661,9 @@ function PreviewComponentWrapper({
           onSliderChange={onSliderChange}
           currentPageNumber={currentPageNumber}
           totalPages={totalPages}
+          bgmMuted={bgmMuted}
+          bgmBlocked={bgmBlocked}
+          onBGMToggleMute={onBGMToggleMute}
         />
         {isSelected && !isEditable && (
           <div className="pointer-events-none absolute right-1 top-1 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white">
@@ -685,6 +701,7 @@ function PreviewComponentWrapper({
               onUpdatePosition={() => undefined}
               onDelete={onDeleteComponent}
               onOpenImagePicker={onOpenImagePicker}
+              onOpenAudioPicker={onOpenAudioPicker}
               onUpdateAction={onUpdateAction}
               pageType={pageType}
               onUnmerge={component.type === "group" ? onUnmerge : undefined}
@@ -725,6 +742,7 @@ export default function PhonePreview({
   onUpdateData,
   onDeleteComponent,
   onOpenImagePicker,
+  onOpenAudioPicker,
   onUpdateAction,
   onBringToFront,
   onSendToBack,
@@ -745,6 +763,9 @@ export default function PhonePreview({
   onSliderChange,
   currentPageNumber,
   totalPages,
+  bgmMuted,
+  bgmBlocked,
+  onBGMToggleMute,
   frameless = false,
   selectedAnswers,
   transitionEffect = "none",
@@ -1257,7 +1278,8 @@ export default function PhonePreview({
         componentType === "ranking" ||
         componentType === "input" ||
         componentType === "matching" ||
-        componentType === "slider"
+        componentType === "slider" ||
+        componentType === "bgm"
       ) {
         event.preventDefault();
         event.stopPropagation();
@@ -1390,6 +1412,9 @@ export default function PhonePreview({
                       onOpenImagePicker={
                         interactive ? onOpenImagePicker : undefined
                       }
+                      onOpenAudioPicker={
+                        interactive ? onOpenAudioPicker : undefined
+                      }
                       onUpdateAction={interactive ? onUpdateAction : undefined}
                       onBringToFront={interactive ? onBringToFront : undefined}
                       onSendToBack={interactive ? onSendToBack : undefined}
@@ -1428,6 +1453,9 @@ export default function PhonePreview({
                       onSliderChange={interactive ? onSliderChange : undefined}
                       currentPageNumber={currentPageNumber}
                       totalPages={totalPages}
+                      bgmMuted={bgmMuted}
+                      bgmBlocked={bgmBlocked}
+                      onBGMToggleMute={onBGMToggleMute}
                     />
                   );
                 })
@@ -1494,6 +1522,8 @@ export default function PhonePreview({
     [
       contentClassName,
       currentPageNumber,
+      bgmBlocked,
+      bgmMuted,
       defaultEmptyState,
       editingComponentId,
       emptyStateContent,
@@ -1513,6 +1543,7 @@ export default function PhonePreview({
       multiSelectedIds,
       multiSelectionBounds,
       onBringToFront,
+      onBGMToggleMute,
       onComponentAction,
       onComponentClick,
       onComponentHover,
@@ -1522,6 +1553,7 @@ export default function PhonePreview({
       onMergeComponents,
       onMultiSelect,
       onOpenImagePicker,
+      onOpenAudioPicker,
       onSendToBack,
       onTextChange,
       onUnmergeGroup,

@@ -162,6 +162,17 @@ export default function PlayQuizPage() {
   >({});
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [isCalculatingResults, setIsCalculatingResults] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState<boolean | null>(
+    () =>
+      typeof window === "undefined"
+        ? null
+        : window.matchMedia("(min-width: 768px)").matches,
+  );
+  const bgmAudioRef = useRef<HTMLAudioElement>(null);
+  const bgmSrcRef = useRef<string>("");
+  const bgmUserMutedRef = useRef(false);
+  const [bgmMuted, setBgmMuted] = useState(false);
+  const [bgmBlocked, setBgmBlocked] = useState(false);
   const loggedViewSessionIdsRef = useRef(new Set<string>());
   const previewResponsesByPageRef = useRef<Record<string, PlayResponse[]>>({});
 
@@ -230,8 +241,142 @@ export default function PlayQuizPage() {
     [displayPage?.components],
   );
 
+  const activeBGM = useMemo(() => {
+    const component = displayComponents.find(
+      (item) =>
+        item.type === "bgm" && typeof item.data === "string" && item.data,
+    );
+    if (!component?.data) return null;
+
+    const props = component.props ?? {};
+    return {
+      src: component.data,
+      muted: typeof props.muted === "boolean" ? props.muted : false,
+      volume:
+        typeof props.volume === "number"
+          ? Math.min(100, Math.max(0, props.volume))
+          : 70,
+      loop: typeof props.loop === "boolean" ? props.loop : true,
+    };
+  }, [displayComponents]);
+
   const isLoading = quizQuery === undefined;
   const quizNotFound = quizQuery === null;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktopViewport(event.matches);
+    };
+
+    setIsDesktopViewport(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  const playActiveBGM = useCallback(async () => {
+    const audio = bgmAudioRef.current;
+    if (!audio || !activeBGM) return;
+
+    try {
+      await audio.play();
+      setBgmBlocked(false);
+    } catch {
+      setBgmBlocked(true);
+    }
+  }, [activeBGM]);
+
+  useEffect(() => {
+    const audio = bgmAudioRef.current;
+    if (!audio) return;
+
+    if (!activeBGM) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      bgmSrcRef.current = "";
+      setBgmBlocked(false);
+      return;
+    }
+
+    const sourceChanged = bgmSrcRef.current !== activeBGM.src;
+    if (sourceChanged) {
+      bgmSrcRef.current = activeBGM.src;
+      audio.src = activeBGM.src;
+      audio.load();
+      if (!bgmUserMutedRef.current) {
+        setBgmMuted(activeBGM.muted);
+      }
+    }
+
+    const nextMuted = bgmUserMutedRef.current ? bgmMuted : activeBGM.muted;
+    audio.muted = nextMuted;
+    audio.volume = activeBGM.volume / 100;
+    audio.loop = activeBGM.loop;
+
+    if (nextMuted) {
+      audio.pause();
+      setBgmBlocked(false);
+      return;
+    }
+
+    void playActiveBGM();
+  }, [activeBGM, bgmMuted, playActiveBGM]);
+
+  useEffect(() => {
+    if (!activeBGM || bgmMuted) return;
+
+    const handleFirstInteraction = () => {
+      void playActiveBGM();
+    };
+
+    window.addEventListener("pointerdown", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
+    window.addEventListener("keydown", handleFirstInteraction, {
+      once: true,
+      capture: true,
+    });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction, {
+        capture: true,
+      });
+      window.removeEventListener("keydown", handleFirstInteraction, {
+        capture: true,
+      });
+    };
+  }, [activeBGM, bgmMuted, playActiveBGM]);
+
+  const handleBGMToggleMute = useCallback(() => {
+    if (!activeBGM) return;
+
+    if (bgmBlocked && !bgmMuted) {
+      void playActiveBGM();
+      return;
+    }
+
+    bgmUserMutedRef.current = true;
+    setBgmMuted((current) => {
+      const nextMuted = !current;
+      const audio = bgmAudioRef.current;
+      if (audio) {
+        audio.muted = nextMuted;
+        if (nextMuted) {
+          audio.pause();
+          setBgmBlocked(false);
+        } else {
+          void audio.play().then(
+            () => setBgmBlocked(false),
+            () => setBgmBlocked(true),
+          );
+        }
+      }
+      return nextMuted;
+    });
+  }, [activeBGM, bgmBlocked, bgmMuted, playActiveBGM]);
+
   useEffect(() => {
     if (isPreviewMode) {
       return;
@@ -1247,10 +1392,8 @@ export default function PlayQuizPage() {
     );
   }
 
-  // Desktop: show phone preview with frame
-  // Mobile: frameless full-screen view
-  const desktopQuizFrame = displayPage ? (
-    <div className="relative">
+  const quizFrame = displayPage ? (
+    <div className={isDesktopViewport ? "relative" : "relative h-full w-full"}>
       <PhonePreview
         components={displayComponents}
         background={displayPage.background}
@@ -1263,8 +1406,9 @@ export default function PlayQuizPage() {
               ? totalQuestions
               : currentPageIndex
         }
-        scale={1}
-        roundedCorners={false}
+        scale={isDesktopViewport ? 1 : undefined}
+        roundedCorners={isDesktopViewport ? false : undefined}
+        frameless={!isDesktopViewport}
         onComponentAction={handleComponentAction}
         matchingPairsByComponent={matchingPairsByComponent}
         onMatchingChange={handleMatchingChange}
@@ -1275,39 +1419,9 @@ export default function PlayQuizPage() {
         onTextChange={handleTextChange}
         sliderValueByComponent={sliderValueByComponent}
         onSliderChange={handleSliderChange}
-        currentPageNumber={Math.min(
-          currentPageIndex + 1,
-          Math.max(totalQuestions, 1),
-        )}
-        totalPages={Math.max(totalQuestions, 1)}
-      />
-    </div>
-  ) : null;
-
-  const mobileQuizFrame = displayPage ? (
-    <div className="relative h-full w-full">
-      <PhonePreview
-        components={displayComponents}
-        background={displayPage.background}
-        transitionEffect={displayPage.transitionEffect}
-        transitionKey={String(displayPage._id)}
-        transitionSequence={
-          shouldShowOnboarding
-            ? -1
-            : quizCompleted
-              ? totalQuestions
-              : currentPageIndex
-        }
-        frameless
-        onComponentAction={handleComponentAction}
-        matchingPairsByComponent={matchingPairsByComponent}
-        onMatchingChange={handleMatchingChange}
-        selectedAnswers={selectedAnswers}
-        rankingOrderByComponent={rankingOrderByComponent}
-        onRankingChange={handleRankingChange}
-        onTextChange={handleTextChange}
-        sliderValueByComponent={sliderValueByComponent}
-        onSliderChange={handleSliderChange}
+        bgmMuted={bgmMuted}
+        bgmBlocked={bgmBlocked}
+        onBGMToggleMute={handleBGMToggleMute}
         currentPageNumber={Math.min(
           currentPageIndex + 1,
           Math.max(totalQuestions, 1),
@@ -1329,19 +1443,21 @@ export default function PlayQuizPage() {
 
   return (
     <div className="fixed inset-0 h-screen min-h-[100dvh] w-full overflow-hidden overscroll-none bg-black">
+      <audio ref={bgmAudioRef} preload="auto" />
       {backButton}
-      {/* Desktop layout - centered with phone frame */}
-      <div className="hidden h-screen grid-cols-3 bg-black md:grid">
-        <div />
-        <div className="flex h-screen flex-col items-center justify-center">
-          {desktopQuizFrame ?? emptyState}
+      {isDesktopViewport === null ? null : isDesktopViewport ? (
+        <div className="grid h-screen grid-cols-3 bg-black">
+          <div />
+          <div className="flex h-screen flex-col items-center justify-center">
+            {quizFrame ?? emptyState}
+          </div>
+          <div />
         </div>
-        <div />
-      </div>
-      {/* Mobile layout - full screen, no frame, no scroll */}
-      <div className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none md:hidden">
-        {mobileQuizFrame ?? emptyState}
-      </div>
+      ) : (
+        <div className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none">
+          {quizFrame ?? emptyState}
+        </div>
+      )}
     </div>
   );
 }

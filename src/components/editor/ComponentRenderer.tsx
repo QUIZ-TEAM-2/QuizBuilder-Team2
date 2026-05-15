@@ -18,13 +18,19 @@ export interface ComponentRendererProps {
   onRankingChange?: (componentId: string, rankingOrder: string[]) => void;
   onRankingSubmit?: (componentId: string) => void;
   matchingPairs?: Record<string, string>;
-  onMatchingChange?: (componentId: string, pairs: Record<string, string>) => void;
+  onMatchingChange?: (
+    componentId: string,
+    pairs: Record<string, string>,
+  ) => void;
   sliderValue?: number;
   onSliderChange?: (
     componentId: string,
     value: number,
     intervalIndex: number,
   ) => void;
+  bgmMuted?: boolean;
+  bgmBlocked?: boolean;
+  onBGMToggleMute?: () => void;
 }
 
 export function ComponentRenderer({
@@ -42,6 +48,9 @@ export function ComponentRenderer({
   onMatchingChange,
   sliderValue,
   onSliderChange,
+  bgmMuted,
+  bgmBlocked,
+  onBGMToggleMute,
 }: ComponentRendererProps) {
   const manifest = getManifestByType(component.type);
 
@@ -63,6 +72,9 @@ export function ComponentRenderer({
     onMatchingChange,
     sliderValue,
     onSliderChange,
+    bgmMuted,
+    bgmBlocked,
+    onBGMToggleMute,
   };
 
   return manifest.render({

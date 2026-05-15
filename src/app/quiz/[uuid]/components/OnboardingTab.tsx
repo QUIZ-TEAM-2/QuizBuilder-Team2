@@ -20,6 +20,7 @@ import { ImageIcon, Loader2, Plus, X } from "lucide-react";
 import EditorPreviewPanel from "./EditorPreviewPanel";
 import RenamePageDialog from "./RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
+import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import { api } from "../../../../../convex/_generated/api";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import { useTemplates } from "@/hooks/useTemplates";
@@ -113,9 +114,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     | null
     | undefined;
   const transitionPreviewTarget = useMemo(() => {
-    const firstQuizPage = (quizQuery?.pages ?? [])[0] as
-      | PageEntity
-      | undefined;
+    const firstQuizPage = (quizQuery?.pages ?? [])[0] as PageEntity | undefined;
     if (!firstQuizPage) {
       return null;
     }
@@ -401,7 +400,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
         pageType="onboarding"
         transitionEffect={editor.currentTransitionEffect}
         onTransitionEffectChange={(effect) =>
-          void editor.handleUpdateTransitionEffect(effect)}
+          void editor.handleUpdateTransitionEffect(effect)
+        }
         transitionPreviewTarget={transitionPreviewTarget}
       />
 
@@ -410,6 +410,13 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
         onClose={() => editor.setIsImagePickerOpen(false)}
         images={editor.imagesQuery ?? []}
         onImageSelect={editor.handleImageSelect}
+      />
+
+      <AudioPickerDialog
+        isOpen={editor.isAudioPickerOpen}
+        onClose={() => editor.setIsAudioPickerOpen(false)}
+        audios={editor.audiosQuery ?? []}
+        onAudioSelect={editor.handleAudioSelect}
       />
 
       <ImagePickerDialog

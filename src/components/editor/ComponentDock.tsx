@@ -7,6 +7,7 @@ import {
   Shapes,
   ListOrdered,
   Edit3,
+  Music,
   Shuffle,
   SlidersHorizontal,
 } from "lucide-react";
@@ -81,6 +82,11 @@ export function ComponentDock({
     e.dataTransfer.effectAllowed = "copy";
   };
 
+  const handleBGMDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("componentType", "bgm");
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   const baseIconClass = cn(
     "flex h-11 w-11 cursor-grab items-center justify-center rounded-lg",
     "bg-gray-100 text-gray-600 transition-all hover:bg-blue-100 hover:text-blue-600",
@@ -115,6 +121,15 @@ export function ComponentDock({
           title="Drag to add Image"
         >
           <ImageIcon className="h-5 w-5" />
+        </div>
+
+        <div
+          draggable
+          onDragStart={handleBGMDragStart}
+          className={baseIconClass}
+          title="Drag to add BGM"
+        >
+          <Music className="h-5 w-5" />
         </div>
 
         {/* Shapes with Popover */}

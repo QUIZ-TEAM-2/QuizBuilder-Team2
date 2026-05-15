@@ -11,6 +11,7 @@ import { PencilIcon, ArrowLeft, Loader2 } from "lucide-react";
 import ConvexUserButton from "@/components/auth/convex-user-button";
 import PreviewPanel from "@/app/quiz/[uuid]/components/PreviewPanel";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
+import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import type { Id, Component, ComponentPosition, PageAction } from "@/types";
 
 export default function TemplateEditorPage() {
@@ -23,6 +24,7 @@ export default function TemplateEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isAudioPickerOpen, setIsAudioPickerOpen] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
   const lastSavedTitleRef = useRef<string>("");
 
@@ -30,6 +32,7 @@ export default function TemplateEditorPage() {
     api.templates.getTemplate,
     templateId ? { id: templateId as Id<"templates"> } : "skip",
   );
+  const audiosQuery = useQuery(api.audios.getUserAudios);
   const updateTemplate = useMutation(
     api.templates.updateTemplate,
   ).withOptimisticUpdate((localStore, args) => {
@@ -312,13 +315,22 @@ export default function TemplateEditorPage() {
         | "ranking"
         | "input"
         | "matching"
-        | "slider",
+        | "slider"
+        | "bgm",
       dropPosition: { x: number; y: number },
       shapeVariant?: string,
     ) => {
       if (!templateId || !templateQuery) return;
 
       try {
+        if (
+          componentType === "bgm" &&
+          serverComponents.some((component) => component.type === "bgm")
+        ) {
+          toast.error("Each page can only have one BGM component");
+          return;
+        }
+
         const props: Record<string, unknown> = {};
         let width = 40;
         let height = 20;
@@ -370,6 +382,16 @@ export default function TemplateEditorPage() {
           props.thumbColor = "#111827";
           props.textColor = "#FFFFFF";
           props.showValue = true;
+        } else if (componentType === "bgm") {
+          width = 12;
+          height = 8;
+          props.muted = false;
+          props.volume = 70;
+          props.loop = true;
+          props.fileName = "";
+          props.backgroundColor = "#020617";
+          props.iconColor = "#ffffff";
+          props.opacity = 100;
         }
 
         const newComponent: Component = {
@@ -560,6 +582,7 @@ export default function TemplateEditorPage() {
             onUpdateData={handleUpdateData}
             onDeleteComponent={handleDeleteComponent}
             onOpenImagePicker={() => setIsImagePickerOpen(true)}
+            onOpenAudioPicker={() => setIsAudioPickerOpen(true)}
             onUpdateBackground={handleUpdateBackground}
             multiSelectedIds={multiSelectedIds}
             onMultiSelect={setMultiSelectedIds}
@@ -589,6 +612,31 @@ export default function TemplateEditorPage() {
             } catch (error) {
               console.error("Failed to update image:", error);
               toast.error("Failed to update image");
+            }
+          }}
+        />
+      )}
+      {audiosQuery && (
+        <AudioPickerDialog
+          isOpen={isAudioPickerOpen}
+          onClose={() => setIsAudioPickerOpen(false)}
+          audios={audiosQuery}
+          onAudioSelect={async (url: string, fileName: string) => {
+            if (!selectedId || !templateId) return;
+            const updatedComponents = serverComponents.map((c) =>
+              c.id === selectedId
+                ? { ...c, data: url, props: { ...c.props, fileName } }
+                : c,
+            );
+            try {
+              await setTemplateComponents({
+                id: templateId as Id<"templates">,
+                components: updatedComponents,
+              });
+              setSelectedId(null);
+            } catch (error) {
+              console.error("Failed to update audio:", error);
+              toast.error("Failed to update audio");
             }
           }}
         />

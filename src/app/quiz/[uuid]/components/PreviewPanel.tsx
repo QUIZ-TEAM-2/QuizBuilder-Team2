@@ -69,7 +69,8 @@ type PreviewPanelProps = {
       | "ranking"
       | "input"
       | "matching"
-      | "slider",
+      | "slider"
+      | "bgm",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
@@ -77,6 +78,7 @@ type PreviewPanelProps = {
   onUpdateData?: (data: string) => void;
   onDeleteComponent?: () => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
   onApplyTemplate?: (template: PageTemplate) => void;
   onUpdateBackground?: (background: PageBackground) => void;
   hideTemplateButton?: boolean;
@@ -131,6 +133,7 @@ export default function PreviewPanel({
   onUpdateData,
   onDeleteComponent,
   onOpenImagePicker,
+  onOpenAudioPicker,
   onApplyTemplate,
   onUpdateBackground,
   hideTemplateButton = false,
@@ -367,6 +370,7 @@ export default function PreviewPanel({
                     onUpdateData={onUpdateData}
                     onDeleteComponent={onDeleteComponent}
                     onOpenImagePicker={onOpenImagePicker}
+                    onOpenAudioPicker={onOpenAudioPicker}
                     multiSelectedIds={multiSelectedIds}
                     onMultiSelect={onMultiSelect}
                     onMergeComponents={onMergeComponents}

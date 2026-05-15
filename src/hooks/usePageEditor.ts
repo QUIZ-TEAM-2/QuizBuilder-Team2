@@ -88,8 +88,10 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
   const createMergeGroup = useMutation(api.quiz.createMergeGroup);
   const unmergeGroupMutation = useMutation(api.quiz.unmergeGroup);
   const imagesQuery = useQuery(api.images.getUserImages);
+  const audiosQuery = useQuery(api.audios.getUserAudios);
 
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isAudioPickerOpen, setIsAudioPickerOpen] = useState(false);
   const [isSavingPageMeta, setIsSavingPageMeta] = useState(false);
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
   const [localPageName, setLocalPageName] = useState<string | null>(null);
@@ -205,13 +207,22 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
         | "ranking"
         | "input"
         | "matching"
-        | "slider",
+        | "slider"
+        | "bgm",
       dropPosition: { x: number; y: number },
       shapeVariant?: string,
     ) => {
       if (!entity) return;
 
       try {
+        if (
+          componentType === "bgm" &&
+          displayComponents.some((component) => component.type === "bgm")
+        ) {
+          toast.error("Each page can only have one BGM component");
+          return;
+        }
+
         const props: Record<string, unknown> = {};
         let width = 40;
         let height = 20;
@@ -262,6 +273,16 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
           props.thumbColor = "#111827";
           props.textColor = "#FFFFFF";
           props.showValue = true;
+        } else if (componentType === "bgm") {
+          width = 12;
+          height = 8;
+          props.muted = false;
+          props.volume = 70;
+          props.loop = true;
+          props.fileName = "";
+          props.backgroundColor = "#020617";
+          props.iconColor = "#ffffff";
+          props.opacity = 100;
         }
 
         const newComponent = await createComponent({
@@ -286,13 +307,22 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
         toast.error("Failed to add component");
       }
     },
-    [entity, pageType, createComponent, editing],
+    [displayComponents, entity, pageType, createComponent, editing],
   );
 
   const handleImageSelect = useCallback(
     (url: string) => {
       editing.updateLocalData(url);
       setIsImagePickerOpen(false);
+    },
+    [editing],
+  );
+
+  const handleAudioSelect = useCallback(
+    (url: string, fileName: string) => {
+      editing.updateLocalData(url);
+      editing.updateLocalProps({ fileName });
+      setIsAudioPickerOpen(false);
     },
     [editing],
   );
@@ -313,8 +343,7 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
           id: entity._id,
           background: template.background,
           transitionEffect: template.transitionEffect ?? "none",
-          questionMode:
-            pageType === "page" ? template.questionMode : undefined,
+          questionMode: pageType === "page" ? template.questionMode : undefined,
         });
         editing.selectComponent(null);
         toast.success("Template applied");
@@ -428,6 +457,13 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
 
     try {
       const copied = JSON.parse(copiedJson) as Component;
+      if (
+        copied.type === "bgm" &&
+        displayComponents.some((component) => component.type === "bgm")
+      ) {
+        toast.error("Each page can only have one BGM component");
+        return;
+      }
       const children = cloneGroupChildrenForPaste(copied.children);
       const newComponent = await createComponent({
         pageId: entity._id,
@@ -455,13 +491,17 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       console.error("Failed to paste:", error);
       toast.error("Failed to paste");
     }
-  }, [entity, pageType, createComponent, editing]);
+  }, [displayComponents, entity, pageType, createComponent, editing]);
 
   const handleDuplicate = useCallback(async () => {
     if (!editing.selectedComponent || !entity) return;
 
     try {
       const comp = editing.selectedComponent;
+      if (comp.type === "bgm") {
+        toast.error("Each page can only have one BGM component");
+        return;
+      }
       const children = cloneGroupChildrenForPaste(comp.children);
       const newComponent = await createComponent({
         pageId: entity._id,
@@ -666,6 +706,7 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       onDeleteComponent: handleDeleteComponent,
       onDropComponent: handleDropComponent,
       onOpenImagePicker: () => setIsImagePickerOpen(true),
+      onOpenAudioPicker: () => setIsAudioPickerOpen(true),
       onCopy: enableClipboard ? handleCopy : undefined,
       onCut: enableClipboard ? handleCut : undefined,
       onPaste: enableClipboard ? handlePaste : undefined,
@@ -737,6 +778,10 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
     setIsImagePickerOpen,
     imagesQuery,
     handleImageSelect,
+    isAudioPickerOpen,
+    setIsAudioPickerOpen,
+    audiosQuery,
+    handleAudioSelect,
 
     // Template
     handleApplyTemplate,

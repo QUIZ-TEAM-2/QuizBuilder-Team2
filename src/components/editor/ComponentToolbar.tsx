@@ -24,6 +24,7 @@ interface ComponentToolbarProps {
   onUpdatePosition: (position: ComponentPosition) => void;
   onDelete: () => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
   onUpdateAction?: (
     action: PageAction | undefined,
     actionProps?: Record<string, unknown>,
@@ -43,6 +44,7 @@ export default function ComponentToolbar({
   onUpdatePosition: _onUpdatePosition,
   onDelete,
   onOpenImagePicker,
+  onOpenAudioPicker,
   onUpdateAction,
   pageType = "quiz",
   onUnmerge,
@@ -103,6 +105,7 @@ export default function ComponentToolbar({
         component={component}
         onUpdateProps={onUpdateProps}
         onOpenImagePicker={onOpenImagePicker}
+        onOpenAudioPicker={onOpenAudioPicker}
         onUnmerge={onUnmerge}
         pageType={pageType}
       />

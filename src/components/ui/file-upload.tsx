@@ -12,9 +12,14 @@ type FileUploadRenderState = {
 };
 
 interface FileUploadProps {
-  onUploadComplete?: (result: { url: string; storageId: string }) => void;
+  onUploadComplete?: (result: {
+    url: string;
+    storageId: string;
+    name: string;
+  }) => void;
   onUploadError?: (error: Error) => void;
   accept?: string;
+  uploadKind?: "image" | "audio";
   className?: string;
   children?:
     | React.ReactNode
@@ -25,14 +30,17 @@ export function FileUpload({
   onUploadComplete,
   onUploadError,
   accept = "image/*",
+  uploadKind = "image",
   className,
   children,
 }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const generateUploadUrl = useMutation(api.images.generateUploadUrl);
+  const generateImageUploadUrl = useMutation(api.images.generateUploadUrl);
   const saveImage = useMutation(api.images.saveImage);
+  const generateAudioUploadUrl = useMutation(api.audios.generateUploadUrl);
+  const saveAudio = useMutation(api.audios.saveAudio);
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -43,7 +51,10 @@ export function FileUpload({
     setIsUploading(true);
 
     try {
-      const uploadUrl = await generateUploadUrl();
+      const uploadUrl =
+        uploadKind === "audio"
+          ? await generateAudioUploadUrl()
+          : await generateImageUploadUrl();
 
       const result = await fetch(uploadUrl, {
         method: "POST",
@@ -57,18 +68,25 @@ export function FileUpload({
 
       const { storageId } = (await result.json()) as { storageId: string };
 
-      const savedImage = await saveImage({
-        name: file.name,
-        storageId: storageId as Id<"_storage">, // Convex storage ID type
-        format: file.type,
-        size: file.size,
-      });
-
-      const imageUrl = savedImage.url;
+      const savedFile =
+        uploadKind === "audio"
+          ? await saveAudio({
+              name: file.name,
+              storageId: storageId as Id<"_storage">,
+              format: file.type,
+              size: file.size,
+            })
+          : await saveImage({
+              name: file.name,
+              storageId: storageId as Id<"_storage">,
+              format: file.type,
+              size: file.size,
+            });
 
       onUploadComplete?.({
-        url: imageUrl,
-        storageId: savedImage.storageId as string,
+        url: savedFile.url,
+        storageId: savedFile.storageId as string,
+        name: file.name,
       });
     } catch (error) {
       const errorObj =

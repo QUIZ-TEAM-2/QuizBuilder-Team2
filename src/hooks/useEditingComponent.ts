@@ -40,7 +40,7 @@ export function useEditingComponent(
 
   const hasChangesRef = useRef(false);
   const originalComponentRef = useRef<Component | null>(null);
-  const saveChangesRef = useRef<() => Promise<void>>(async () => {});
+  const saveChangesRef = useRef<() => Promise<void>>(async () => undefined);
 
   /**
    * Optimistically patch the cached `api.quiz.getQuiz({ id: quizId })` result by
@@ -49,14 +49,20 @@ export function useEditingComponent(
    * This prevents flicker on deselect when the UI falls back from local state to query state.
    */
   const patchCachedQuizComponent = useCallback(
-    (localStore: OptimisticLocalStore, componentId: string, patch: (component: Record<string, unknown>) => Record<string, unknown>) => {
+    (
+      localStore: OptimisticLocalStore,
+      componentId: string,
+      patch: (component: Record<string, unknown>) => Record<string, unknown>,
+    ) => {
       if (!quizId) return;
 
       const args = { id: quizId };
       const cached = localStore.getQuery(api.quiz.getQuiz, args);
       if (!cached) return;
 
-      const patchComponents = <T>(components: T[] | undefined): T[] | undefined => {
+      const patchComponents = <T>(
+        components: T[] | undefined,
+      ): T[] | undefined => {
         if (!Array.isArray(components)) return components;
         let changed = false;
         const next = components.map((c) => {
@@ -69,7 +75,9 @@ export function useEditingComponent(
         return changed ? next : components;
       };
 
-      const patchPageLike = <T extends { components: unknown[] }>(pageLike: T): T => {
+      const patchPageLike = <T extends { components: unknown[] }>(
+        pageLike: T,
+      ): T => {
         if (!pageLike) return pageLike;
         const nextComponents = patchComponents(pageLike.components);
         return nextComponents === pageLike.components
@@ -99,55 +107,39 @@ export function useEditingComponent(
   const updatePosition = useMutation(
     api.quiz.updateComponentPosition,
   ).withOptimisticUpdate((localStore, args) => {
-    patchCachedQuizComponent(
-      localStore,
-      args.componentId,
-      (component) => ({
-        ...component,
-        position: args.position,
-      }),
-    );
+    patchCachedQuizComponent(localStore, args.componentId, (component) => ({
+      ...component,
+      position: args.position,
+    }));
   });
 
   const updateProps = useMutation(
     api.quiz.updateComponentProps,
   ).withOptimisticUpdate((localStore, args) => {
-    patchCachedQuizComponent(
-      localStore,
-      args.componentId,
-      (component) => ({
-        ...component,
-        // Server merges props: { ...(component.props ?? {}), ...args.props }
-        props: { ...(component.props ?? {}), ...(args.props ?? {}) },
-      }),
-    );
+    patchCachedQuizComponent(localStore, args.componentId, (component) => ({
+      ...component,
+      // Server merges props: { ...(component.props ?? {}), ...args.props }
+      props: { ...(component.props ?? {}), ...(args.props ?? {}) },
+    }));
   });
 
   const updateData = useMutation(
     api.quiz.updateComponentData,
   ).withOptimisticUpdate((localStore, args) => {
-    patchCachedQuizComponent(
-      localStore,
-      args.componentId,
-      (component) => ({
-        ...component,
-        data: args.data,
-      }),
-    );
+    patchCachedQuizComponent(localStore, args.componentId, (component) => ({
+      ...component,
+      data: args.data,
+    }));
   });
 
   const updateAction = useMutation(
     api.quiz.updateComponentAction,
   ).withOptimisticUpdate((localStore, args) => {
-    patchCachedQuizComponent(
-      localStore,
-      args.componentId,
-      (component) => ({
-        ...component,
-        action: args.action,
-        actionProps: args.actionProps,
-      }),
-    );
+    patchCachedQuizComponent(localStore, args.componentId, (component) => ({
+      ...component,
+      action: args.action,
+      actionProps: args.actionProps,
+    }));
   });
 
   // When selection changes, copy the component to local state

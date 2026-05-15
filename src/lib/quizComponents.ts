@@ -9,6 +9,7 @@ import RankingManifest from "../components/quiz/components/Ranking";
 import InputManifest from "../components/quiz/components/Input";
 import MatchingManifest from "../components/quiz/components/Matching";
 import SliderManifest from "../components/quiz/components/Slider";
+import BGMManifest from "../components/quiz/components/BGM";
 
 // ==========================================
 // COMPONENT MANIFEST TYPES
@@ -30,13 +31,19 @@ export interface ComponentRenderHelpers {
   onRankingChange?: (componentId: string, rankingOrder: string[]) => void;
   onRankingSubmit?: (componentId: string) => void;
   matchingPairs?: Record<string, string>;
-  onMatchingChange?: (componentId: string, pairs: Record<string, string>) => void;
+  onMatchingChange?: (
+    componentId: string,
+    pairs: Record<string, string>,
+  ) => void;
   sliderValue?: number;
   onSliderChange?: (
     componentId: string,
     value: number,
     intervalIndex: number,
   ) => void;
+  bgmMuted?: boolean;
+  bgmBlocked?: boolean;
+  onBGMToggleMute?: () => void;
 }
 
 export interface ComponentRenderParams<
@@ -52,6 +59,7 @@ export interface ComponentToolbarProps<
   component: TComponent;
   onUpdateProps: (props: Record<string, unknown>) => void;
   onOpenImagePicker?: () => void;
+  onOpenAudioPicker?: () => void;
   onUnmerge?: () => void; // For group components
   pageType?: "quiz" | "result" | "onboarding";
 }
@@ -81,6 +89,7 @@ const manifests: ComponentManifest[] = [
   InputManifest as ComponentManifest,
   MatchingManifest as ComponentManifest,
   SliderManifest as ComponentManifest,
+  BGMManifest as ComponentManifest,
 ];
 
 export const componentManifests = manifests;
@@ -91,7 +100,8 @@ export function canComponentBecomeButton(component: Component): boolean {
     component.type !== "ranking" &&
     component.type !== "input" &&
     component.type !== "slider" &&
-    component.type !== "matching"
+    component.type !== "matching" &&
+    component.type !== "bgm"
   );
 }
 

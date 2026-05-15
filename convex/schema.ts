@@ -138,6 +138,15 @@ export default defineSchema({
     hiddenFromPicker: v.optional(v.boolean()),
   }).index("by_userId", ["userId"]),
 
+  audios: defineTable({
+    name: v.string(),
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    format: v.optional(v.string()),
+    size: v.optional(v.number()),
+    hiddenFromPicker: v.optional(v.boolean()),
+  }).index("by_userId", ["userId"]),
+
   // Quiz sessions table - track user progress through quizzes
   quizSessions: defineTable({
     quizId: v.id("quiz"),

@@ -36,24 +36,27 @@ type QuestionMode =
   | "fill-in-blank"
   | "matching"
   | "slider";
-type SpecialQuestionComponentType =
-  | "ranking"
-  | "input"
-  | "matching"
-  | "slider";
+type SpecialQuestionComponentType = "ranking" | "input" | "matching" | "slider";
 
 const DEFAULT_BRAND_NAME = "VisionVerse";
-const SPECIAL_QUESTION_COMPONENT_TYPES = new Set<
-  SpecialQuestionComponentType
->(["ranking", "input", "matching", "slider"]);
+const SPECIAL_QUESTION_COMPONENT_TYPES = new Set<SpecialQuestionComponentType>([
+  "ranking",
+  "input",
+  "matching",
+  "slider",
+]);
 
 function isSpecialQuestionComponentType(
   type: string,
 ): type is SpecialQuestionComponentType {
-  return SPECIAL_QUESTION_COMPONENT_TYPES.has(type as SpecialQuestionComponentType);
+  return SPECIAL_QUESTION_COMPONENT_TYPES.has(
+    type as SpecialQuestionComponentType,
+  );
 }
 
-function isAnswerBoxQuestionMode(questionMode: QuestionMode | undefined): boolean {
+function isAnswerBoxQuestionMode(
+  questionMode: QuestionMode | undefined,
+): boolean {
   return questionMode === "single" || questionMode === "multiple";
 }
 
@@ -87,6 +90,15 @@ function isComponentCompatibleWithQuestionMode(
   }
 
   return component.type === getExpectedQuestionComponentType(questionMode);
+}
+
+function assertAtMostOneBGMComponent(components: Array<{ type: string }>) {
+  const bgmCount = components.filter(
+    (component) => component.type === "bgm",
+  ).length;
+  if (bgmCount > 1) {
+    throw new Error("Each page can only have one BGM component.");
+  }
 }
 
 function normalizeQuizTitleForUniqueness(title: string): string {
@@ -297,10 +309,7 @@ async function removeIncompatibleQuestionComponents(
   return removedCount;
 }
 
-async function hydrateQuizForPlay(
-  ctx: QueryCtx,
-  quiz: Doc<"quiz">,
-) {
+async function hydrateQuizForPlay(ctx: QueryCtx, quiz: Doc<"quiz">) {
   // Keep onboarding separate so the play client can show its dedicated start
   // screen before stepping through the ordered quiz pages.
   const allPages = (
@@ -477,10 +486,7 @@ export const getUserQuizzes = query({
         if (isAdmin) {
           const owner = await ctx.db.get(quiz.userId);
           ownerDisplayName =
-            owner?.username ??
-            owner?.name ??
-            owner?.email ??
-            "unknown";
+            owner?.username ?? owner?.name ?? owner?.email ?? "unknown";
         }
 
         return {
@@ -501,7 +507,6 @@ export const getPublishedQuizzes = query({
   args: {},
 
   handler: async (ctx) => {
-
     /**
      * Fetch published quizzes for the Discover page.
      *
@@ -514,44 +519,33 @@ export const getPublishedQuizzes = query({
 
     const quizzes = await ctx.db
       .query("quiz")
-      .withIndex("by_status", (q) =>
-        q.eq("status", "published")
-      )
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
       .collect();
 
     const results = await Promise.all(
       quizzes.map(async (quiz) => {
-
         let background = undefined;
         let components: any[] = [];
 
         if (quiz.onboardingPageId) {
-
           /**
            * Step 1: get onboarding page
            */
 
-          const page = await ctx.db.get(
-            quiz.onboardingPageId
-          );
+          const page = await ctx.db.get(quiz.onboardingPageId);
 
           if (page) {
-
             background = page.background;
 
             /**
              * Step 2: fetch components for this page
              */
 
-            const pageComponents =
-            await ctx.db
+            const pageComponents = await ctx.db
               .query("components")
               .withIndex("by_pageId", (q) =>
-                q.eq(
-                  "pageId",
-                  quiz.onboardingPageId!.toString()
-                )
+                q.eq("pageId", quiz.onboardingPageId!.toString()),
               )
               .collect();
 
@@ -561,8 +555,9 @@ export const getPublishedQuizzes = query({
               data: component.data,
               props: component.props,
               action: component.action as PageAction | undefined,
-              actionProps:
-                component.actionProps as Record<string, unknown> | undefined,
+              actionProps: component.actionProps as
+                | Record<string, unknown>
+                | undefined,
               position: component.position,
               children: component.children as GroupChild[] | undefined,
             }));
@@ -587,9 +582,7 @@ export const getPublishedQuizzes = query({
           viewCount: (
             await ctx.db
               .query("quizEvents")
-              .withIndex("by_quizId", (q) =>
-                q.eq("quizId", quiz._id)
-              )
+              .withIndex("by_quizId", (q) => q.eq("quizId", quiz._id))
               .collect()
           ).filter((event) => event.type === "view").length,
 
@@ -602,7 +595,7 @@ export const getPublishedQuizzes = query({
 
           status: quiz.status,
         };
-      })
+      }),
     );
 
     return results;
@@ -851,7 +844,7 @@ export const createPage = mutation({
       await Promise.all(quiz.pageIds.map((pageId) => ctx.db.get(pageId)))
     ).filter(Boolean);
     const trimmedPageName = args.pageName?.trim();
-    const nextPageNumber = quiz.nextPageNumber ?? (quiz.pageIds.length + 1);
+    const nextPageNumber = quiz.nextPageNumber ?? quiz.pageIds.length + 1;
     const pageName =
       trimmedPageName && trimmedPageName.length > 0
         ? trimmedPageName
@@ -953,7 +946,11 @@ export const updatePage = mutation({
       args.questionMode !== undefined &&
       args.questionMode !== page.questionMode
     ) {
-      await removeIncompatibleQuestionComponents(ctx, args.id, args.questionMode);
+      await removeIncompatibleQuestionComponents(
+        ctx,
+        args.id,
+        args.questionMode,
+      );
     }
 
     await ctx.db.patch(page.quizId, { updatedAt: Date.now() });
@@ -1037,7 +1034,7 @@ export const createResult = mutation({
       await Promise.all(quiz.resultIds.map((resultId) => ctx.db.get(resultId)))
     ).filter(Boolean);
     const trimmedPageName = args.pageName?.trim();
-    const nextResultNumber = quiz.nextResultNumber ?? (quiz.resultIds.length + 1);
+    const nextResultNumber = quiz.nextResultNumber ?? quiz.resultIds.length + 1;
     const pageName =
       trimmedPageName && trimmedPageName.length > 0
         ? trimmedPageName
@@ -1237,6 +1234,8 @@ export const setPageComponents = mutation({
 
     assertQuizEditable(quiz);
 
+    assertAtMostOneBGMComponent(args.components);
+
     await deleteComponentsForPage(ctx, args.id);
 
     // Save new components with default positions if not provided
@@ -1280,6 +1279,8 @@ export const setResultComponents = mutation({
     );
 
     assertQuizEditable(quiz);
+
+    assertAtMostOneBGMComponent(args.components);
 
     await deleteComponentsForPage(ctx, args.id);
 
@@ -1380,6 +1381,8 @@ export const setOnboardingComponents = mutation({
     if (page.pageType !== "onboarding") {
       throw new Error("This page is not an onboarding page");
     }
+
+    assertAtMostOneBGMComponent(args.components);
 
     await deleteComponentsForPage(ctx, args.id);
 
@@ -1545,7 +1548,9 @@ export const updateComponentAction = mutation({
       if (!page) {
         throw new Error("Page not found");
       }
-      if (!isAnswerBoxQuestionMode(page.questionMode as QuestionMode | undefined)) {
+      if (
+        !isAnswerBoxQuestionMode(page.questionMode as QuestionMode | undefined)
+      ) {
         throw new Error(
           "Answer boxes are only allowed on single-choice or multiple-choice pages.",
         );
@@ -1571,13 +1576,17 @@ export const updateComponentAction = mutation({
                 .resultMapping === "object" &&
               (component.actionProps as { resultMapping?: unknown })
                 .resultMapping !== null
-                ? (component.actionProps as {
-                    resultMapping?: Record<string, number>;
-                  }).resultMapping
+                ? (
+                    component.actionProps as {
+                      resultMapping?: Record<string, number>;
+                    }
+                  ).resultMapping
                 : {}) ?? {}),
-              ...((args.actionProps as {
-                resultMapping?: Record<string, number>;
-              }).resultMapping ?? {}),
+              ...((
+                args.actionProps as {
+                  resultMapping?: Record<string, number>;
+                }
+              ).resultMapping ?? {}),
             },
           }
         : args.actionProps;
@@ -1877,21 +1886,11 @@ export const createComponent = mutation({
     let contentOwnerId: Id<"users">;
     if (args.pageType === "result") {
       const result = await ctx.db.get(args.pageId as Id<"results">);
-      const authorized = await requireOwnership(
-        ctx,
-        result,
-        userId,
-        "Result",
-      );
+      const authorized = await requireOwnership(ctx, result, userId, "Result");
       contentOwnerId = authorized.userId;
     } else {
       const page = await ctx.db.get(args.pageId as Id<"pages">);
-      const authorized = await requireOwnership(
-        ctx,
-        page,
-        userId,
-        "Page",
-      );
+      const authorized = await requireOwnership(ctx, page, userId, "Page");
       contentOwnerId = authorized.userId;
 
       const questionMode = page?.questionMode as QuestionMode | undefined;
@@ -1904,10 +1903,24 @@ export const createComponent = mutation({
         }
       }
 
-      if (args.action === "answerBox" && !isAnswerBoxQuestionMode(questionMode)) {
+      if (
+        args.action === "answerBox" &&
+        !isAnswerBoxQuestionMode(questionMode)
+      ) {
         throw new Error(
           "Answer boxes are only allowed on single-choice or multiple-choice pages.",
         );
+      }
+    }
+
+    if (args.type === "bgm") {
+      const existingBGM = await ctx.db
+        .query("components")
+        .withIndex("by_pageId", (q) => q.eq("pageId", args.pageId))
+        .filter((q) => q.eq(q.field("type"), "bgm"))
+        .first();
+      if (existingBGM) {
+        throw new Error("Each page can only have one BGM component.");
       }
     }
 
@@ -2062,12 +2075,27 @@ export const checkSlugAvailability = query({
     await requireUserId(ctx);
 
     const slug = args.slug.trim().toLowerCase();
-    
+
     // 1. Reserved words check
     const RESERVED_WORDS = new Set([
-      "quiz", "play", "template", "discover", "admin", "api",
-      "login", "register", "new", "undefined", "null", "false", "true",
-      "custom", "static", "public", "dashboard", "settings"
+      "quiz",
+      "play",
+      "template",
+      "discover",
+      "admin",
+      "api",
+      "login",
+      "register",
+      "new",
+      "undefined",
+      "null",
+      "false",
+      "true",
+      "custom",
+      "static",
+      "public",
+      "dashboard",
+      "settings",
     ]);
 
     if (RESERVED_WORDS.has(slug)) {
@@ -2124,12 +2152,27 @@ export const updateCustomSlug = mutation({
     await requireOwnership(ctx, await ctx.db.get(args.quizId), userId, "Quiz");
 
     const slug = args.slug.trim().toLowerCase();
-    
+
     // Re-run validation for safety
     const RESERVED_WORDS = new Set([
-      "quiz", "play", "template", "discover", "admin", "api",
-      "login", "register", "new", "undefined", "null", "false", "true",
-      "custom", "static", "public", "dashboard", "settings"
+      "quiz",
+      "play",
+      "template",
+      "discover",
+      "admin",
+      "api",
+      "login",
+      "register",
+      "new",
+      "undefined",
+      "null",
+      "false",
+      "true",
+      "custom",
+      "static",
+      "public",
+      "dashboard",
+      "settings",
     ]);
 
     if (slug.length < 3 || slug.length > 50) {
@@ -2194,6 +2237,6 @@ export const getBySlug = query({
       .query("quiz")
       .withIndex("by_customSlug", (q) => q.eq("customSlug", slug))
       .unique();
-    return quiz; 
+    return quiz;
   },
 });

@@ -11,6 +11,7 @@ import DeletePageDialog from "./components/DeletePageDialog";
 import QuestionTypeChangeDialog from "./components/QuestionTypeChangeDialog";
 import RenamePageDialog from "./components/RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
+import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import {
   getQuestionModeLabel,
@@ -54,8 +55,9 @@ export default function QuizPagesTab({
   const isLoading = quizQuery === undefined;
 
   const [internalIndex, setInternalIndex] = useState(0);
-  const [pagePendingDelete, setPagePendingDelete] =
-    useState<PageEntity | null>(null);
+  const [pagePendingDelete, setPagePendingDelete] = useState<PageEntity | null>(
+    null,
+  );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
@@ -148,7 +150,11 @@ export default function QuizPagesTab({
   );
 
   // Reset selection when page changes
-  const { editing: editingHook, setLocalPageName, setMultiSelectedIds } = editor;
+  const {
+    editing: editingHook,
+    setLocalPageName,
+    setMultiSelectedIds,
+  } = editor;
   useEffect(() => {
     const previousIndex = previousIndexRef.current;
     previousIndexRef.current = currentIndex;
@@ -196,7 +202,9 @@ export default function QuizPagesTab({
     const normalizedKey = normalizedName.toLocaleLowerCase();
     const duplicate = pages.some((page, index) => {
       if (page._id === currentPage._id) return false;
-      return getDisplayPageName(page, index).toLocaleLowerCase() === normalizedKey;
+      return (
+        getDisplayPageName(page, index).toLocaleLowerCase() === normalizedKey
+      );
     });
 
     if (duplicate) {
@@ -228,14 +236,7 @@ export default function QuizPagesTab({
     } finally {
       setIsRenamingPage(false);
     }
-  }, [
-    currentPage,
-    editor,
-    getDisplayPageName,
-    pages,
-    renameValue,
-    updatePage,
-  ]);
+  }, [currentPage, editor, getDisplayPageName, pages, renameValue, updatePage]);
 
   const requestDeletePage = useCallback(() => {
     if (!currentPage) return;
@@ -394,7 +395,9 @@ export default function QuizPagesTab({
         });
 
         if (currentPageId) {
-          const nextIndex = nextPages.findIndex((page) => page._id === currentPageId);
+          const nextIndex = nextPages.findIndex(
+            (page) => page._id === currentPageId,
+          );
           if (nextIndex !== -1) {
             setIndex(nextIndex);
           }
@@ -434,7 +437,8 @@ export default function QuizPagesTab({
         activeIndex={currentIndex}
         onSelectPage={handleSelectPage}
         onReorderPages={(fromIndex, toIndex) =>
-          void handleReorderPages(fromIndex, toIndex)}
+          void handleReorderPages(fromIndex, toIndex)
+        }
       />
 
       <EditorPreviewPanel
@@ -475,7 +479,8 @@ export default function QuizPagesTab({
         isQuestionModeSaving={isSavingQuestionMode}
         transitionEffect={editor.currentTransitionEffect}
         onTransitionEffectChange={(effect) =>
-          void editor.handleUpdateTransitionEffect(effect)}
+          void editor.handleUpdateTransitionEffect(effect)
+        }
         transitionPreviewTarget={transitionPreviewTarget}
       />
 
@@ -484,6 +489,12 @@ export default function QuizPagesTab({
         onClose={() => editor.setIsImagePickerOpen(false)}
         images={editor.imagesQuery ?? []}
         onImageSelect={editor.handleImageSelect}
+      />
+      <AudioPickerDialog
+        isOpen={editor.isAudioPickerOpen}
+        onClose={() => editor.setIsAudioPickerOpen(false)}
+        audios={editor.audiosQuery ?? []}
+        onAudioSelect={editor.handleAudioSelect}
       />
       <DeletePageDialog
         open={isDeleteDialogOpen}

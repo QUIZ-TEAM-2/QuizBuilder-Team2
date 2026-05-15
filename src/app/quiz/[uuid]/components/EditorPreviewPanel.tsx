@@ -464,6 +464,7 @@ export default function EditorPreviewPanel({
     onDeleteComponent,
     onDropComponent,
     onOpenImagePicker,
+    onOpenAudioPicker,
     onCopy,
     onCut,
     onPaste,
@@ -723,6 +724,9 @@ export default function EditorPreviewPanel({
                     }
                     onOpenImagePicker={
                       isTransitionPreviewing ? undefined : onOpenImagePicker
+                    }
+                    onOpenAudioPicker={
+                      isTransitionPreviewing ? undefined : onOpenAudioPicker
                     }
                     multiSelectedIds={
                       isTransitionPreviewing ? [] : multiSelectedIds

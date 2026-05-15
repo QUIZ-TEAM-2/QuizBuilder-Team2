@@ -9,6 +9,7 @@ import ResultsPanel from "./components/ResultsPanel";
 import EditorPreviewPanel from "./components/EditorPreviewPanel";
 import RenamePageDialog from "./components/RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
+import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import { useTemplates } from "@/hooks/useTemplates";
 import { Button } from "@/components/ui/button";
@@ -53,9 +54,8 @@ export default function ResultPagesTab({
   const [resultPendingDelete, setResultPendingDelete] =
     useState<ResultEntity | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingResultId, setDeletingResultId] = useState<Id<"results"> | null>(
-    null,
-  );
+  const [deletingResultId, setDeletingResultId] =
+    useState<Id<"results"> | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function ResultPagesTab({
   const isControlled =
     typeof activeResultIndex === "number" &&
     typeof onActiveResultIndexChange === "function";
-  const currentIndex = isControlled ? activeResultIndex ?? 0 : internalIndex;
+  const currentIndex = isControlled ? (activeResultIndex ?? 0) : internalIndex;
 
   const previousIndexRef = useRef(currentIndex);
 
@@ -139,7 +139,11 @@ export default function ResultPagesTab({
   );
 
   // Reset selection when result changes
-  const { editing: editingHook, setLocalPageName, setMultiSelectedIds } = editor;
+  const {
+    editing: editingHook,
+    setLocalPageName,
+    setMultiSelectedIds,
+  } = editor;
   useEffect(() => {
     const previousIndex = previousIndexRef.current;
     previousIndexRef.current = currentIndex;
@@ -183,7 +187,10 @@ export default function ResultPagesTab({
     const normalizedKey = normalizedName.toLocaleLowerCase();
     const duplicate = results.some((result, index) => {
       if (result._id === currentResult._id) return false;
-      return getDisplayResultName(result, index).toLocaleLowerCase() === normalizedKey;
+      return (
+        getDisplayResultName(result, index).toLocaleLowerCase() ===
+        normalizedKey
+      );
     });
 
     if (duplicate) {
@@ -305,7 +312,9 @@ export default function ResultPagesTab({
         });
 
         if (currentResultId) {
-          const nextIndex = nextResults.findIndex((result) => result._id === currentResultId);
+          const nextIndex = nextResults.findIndex(
+            (result) => result._id === currentResultId,
+          );
           if (nextIndex !== -1) {
             setIndex(nextIndex);
           }
@@ -347,7 +356,8 @@ export default function ResultPagesTab({
         activeIndex={currentIndex}
         onSelectResult={handleSelectResult}
         onReorderResults={(fromIndex, toIndex) =>
-          void handleReorderResults(fromIndex, toIndex)}
+          void handleReorderResults(fromIndex, toIndex)
+        }
         onDeleteResult={requestDeleteResult}
         deletingResultId={deletingResultId}
       />
@@ -382,16 +392,15 @@ export default function ResultPagesTab({
         templateDialogDescription="Choose a template to apply to this result page. This will replace the current content."
         onUpdateBackground={editor.handleUpdateBackground}
         onDelete={
-          currentResult
-            ? () => requestDeleteResult(currentResult)
-            : undefined
+          currentResult ? () => requestDeleteResult(currentResult) : undefined
         }
         isDeleting={deletingResultId !== null}
         pageType="result"
         emptyMessage="Select a result page to preview."
         transitionEffect={editor.currentTransitionEffect}
         onTransitionEffectChange={(effect) =>
-          void editor.handleUpdateTransitionEffect(effect)}
+          void editor.handleUpdateTransitionEffect(effect)
+        }
         transitionPreviewTarget={transitionPreviewTarget}
       />
 
@@ -400,6 +409,12 @@ export default function ResultPagesTab({
         onClose={() => editor.setIsImagePickerOpen(false)}
         images={editor.imagesQuery ?? []}
         onImageSelect={editor.handleImageSelect}
+      />
+      <AudioPickerDialog
+        isOpen={editor.isAudioPickerOpen}
+        onClose={() => editor.setIsAudioPickerOpen(false)}
+        audios={editor.audiosQuery ?? []}
+        onAudioSelect={editor.handleAudioSelect}
       />
 
       <Dialog
