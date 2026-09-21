@@ -340,9 +340,9 @@ async function hydrateQuizForPlay(ctx: QueryCtx, quiz: Doc<"quiz">) {
 
   const onboardingHydrated = onboarding
     ? {
-        ...onboarding,
-        components: await getComponentsForPage(ctx, onboarding._id),
-      }
+      ...onboarding,
+      components: await getComponentsForPage(ctx, onboarding._id),
+    }
     : null;
 
   return {
@@ -445,10 +445,10 @@ export const getUserQuizzes = query({
     const quizzes = isAdmin
       ? await ctx.db.query("quiz").order("desc").collect()
       : await ctx.db
-          .query("quiz")
-          .withIndex("by_userId", (q) => q.eq("userId", userId))
-          .order("desc")
-          .collect();
+        .query("quiz")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .order("desc")
+        .collect();
 
     // Get page and result counts for each quiz, plus onboarding background
     const quizzesWithCounts = await Promise.all(
@@ -686,9 +686,9 @@ export const getQuiz = query({
 
     const onboardingHydrated = onboarding
       ? {
-          ...onboarding,
-          components: await getComponentsForPage(ctx, onboarding._id),
-        }
+        ...onboarding,
+        components: await getComponentsForPage(ctx, onboarding._id),
+      }
       : null;
 
     return {
@@ -727,17 +727,17 @@ export const updateQuiz = mutation({
       description: string | undefined;
       tags: string[] | undefined;
       topic:
-        | "general"
-        | "personality"
-        | "beauty"
-        | "fashion"
-        | "wellness"
-        | "education"
-        | "entertainment"
-        | "marketing"
-        | "lifestyle"
-        | "others"
-        | undefined;
+      | "general"
+      | "personality"
+      | "beauty"
+      | "fashion"
+      | "wellness"
+      | "education"
+      | "entertainment"
+      | "marketing"
+      | "lifestyle"
+      | "others"
+      | undefined;
       brandName: string | undefined;
       brandAvatar: string | undefined;
       coverImage: string | undefined;
@@ -849,10 +849,10 @@ export const createPage = mutation({
       trimmedPageName && trimmedPageName.length > 0
         ? trimmedPageName
         : getNextAvailableNumberedName(
-            "Page",
-            nextPageNumber,
-            existingPages.map((page) => page?.pageName),
-          );
+          "Page",
+          nextPageNumber,
+          existingPages.map((page) => page?.pageName),
+        );
 
     const pageId = await ctx.db.insert("pages", {
       quizId: args.quizId,
@@ -914,13 +914,13 @@ export const updatePage = mutation({
       background: typeof args.background;
       transitionEffect: typeof args.transitionEffect;
       questionMode:
-        | "single"
-        | "multiple"
-        | "ranking"
-        | "fill-in-blank"
-        | "matching"
-        | "slider"
-        | undefined;
+      | "single"
+      | "multiple"
+      | "ranking"
+      | "fill-in-blank"
+      | "matching"
+      | "slider"
+      | undefined;
     }> = {};
 
     if (args.pageName !== undefined) updateData.pageName = args.pageName;
@@ -1039,10 +1039,10 @@ export const createResult = mutation({
       trimmedPageName && trimmedPageName.length > 0
         ? trimmedPageName
         : getNextAvailableNumberedName(
-            "Result",
-            nextResultNumber,
-            existingResults.map((result) => result?.pageName),
-          );
+          "Result",
+          nextResultNumber,
+          existingResults.map((result) => result?.pageName),
+        );
 
     const resultId = await ctx.db.insert("results", {
       quizId: args.quizId,
@@ -1559,36 +1559,36 @@ export const updateComponentAction = mutation({
 
     const nextActionProps =
       args.action === "answerBox" &&
-      typeof args.actionProps === "object" &&
-      args.actionProps !== null &&
-      typeof (args.actionProps as { resultMapping?: unknown }).resultMapping ===
+        typeof args.actionProps === "object" &&
+        args.actionProps !== null &&
+        typeof (args.actionProps as { resultMapping?: unknown }).resultMapping ===
         "object" &&
-      (args.actionProps as { resultMapping?: unknown }).resultMapping !== null
+        (args.actionProps as { resultMapping?: unknown }).resultMapping !== null
         ? {
-            ...(typeof component.actionProps === "object" &&
+          ...(typeof component.actionProps === "object" &&
             component.actionProps !== null
-              ? component.actionProps
-              : {}),
-            resultMapping: {
-              ...((typeof component.actionProps === "object" &&
+            ? component.actionProps
+            : {}),
+          resultMapping: {
+            ...((typeof component.actionProps === "object" &&
               component.actionProps !== null &&
               typeof (component.actionProps as { resultMapping?: unknown })
                 .resultMapping === "object" &&
               (component.actionProps as { resultMapping?: unknown })
                 .resultMapping !== null
-                ? (
-                    component.actionProps as {
-                      resultMapping?: Record<string, number>;
-                    }
-                  ).resultMapping
-                : {}) ?? {}),
-              ...((
-                args.actionProps as {
+              ? (
+                component.actionProps as {
                   resultMapping?: Record<string, number>;
                 }
-              ).resultMapping ?? {}),
-            },
-          }
+              ).resultMapping
+              : {}) ?? {}),
+            ...((
+              args.actionProps as {
+                resultMapping?: Record<string, number>;
+              }
+            ).resultMapping ?? {}),
+          },
+        }
         : args.actionProps;
 
     await ctx.db.patch(args.componentId, {
@@ -2238,5 +2238,162 @@ export const getBySlug = query({
       .withIndex("by_customSlug", (q) => q.eq("customSlug", slug))
       .unique();
     return quiz;
+  },
+});
+
+function remapIds(value: unknown, idMap: Map<string, string>): unknown {
+  if (typeof value === "string") {
+    return idMap.get(value) ?? value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => remapIds(item, idMap));
+  }
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      const newKey = idMap.get(key) ?? key;
+      out[newKey] = remapIds(val, idMap);
+    }
+    return out;
+  }
+  return value;
+}
+
+export const duplicateQuiz = mutation({
+  args: { quizId: v.id("quiz") },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const source = await requireOwnership(
+      ctx,
+      await ctx.db.get(args.quizId),
+      userId,
+      "Quiz",
+    );
+
+    const userQuizzes = await ctx.db
+      .query("quiz")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+    const taken = new Set(
+      userQuizzes.map((q) => normalizeQuizTitleForUniqueness(q.title)),
+    );
+    let title = `${source.title} (Copy)`;
+    let attempt = 2;
+    while (taken.has(normalizeQuizTitleForUniqueness(title))) {
+      title = `${source.title} (Copy ${attempt})`;
+      attempt += 1;
+    }
+
+    const now = Date.now();
+
+    const newQuizId = await ctx.db.insert("quiz", {
+      title,
+      description: source.description,
+      brandName: source.brandName,
+      brandAvatar: source.brandAvatar,
+      coverImage: source.coverImage,
+      topic: source.topic,
+      tags: source.tags,
+      userId,
+      pageIds: [],
+      resultIds: [],
+      nextPageNumber: source.nextPageNumber,
+      nextResultNumber: source.nextResultNumber,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const idMap = new Map<string, string>();
+
+    const newResultIds: Id<"results">[] = [];
+    for (const oldResultId of source.resultIds) {
+      const result = await ctx.db.get(oldResultId);
+      if (!result) continue;
+      const newResultId = await ctx.db.insert("results", {
+        quizId: newQuizId,
+        pageName: result.pageName,
+        background: result.background,
+        transitionEffect: result.transitionEffect,
+        userId,
+      });
+      idMap.set(oldResultId, newResultId);
+      newResultIds.push(newResultId);
+    }
+
+    const newPageIds: Id<"pages">[] = [];
+    for (const oldPageId of source.pageIds) {
+      const page = await ctx.db.get(oldPageId);
+      if (!page) continue;
+      const newPageId = await ctx.db.insert("pages", {
+        quizId: newQuizId,
+        pageName: page.pageName,
+        background: page.background,
+        transitionEffect: page.transitionEffect,
+        userId,
+        pageType: page.pageType,
+        questionMode: page.questionMode,
+      });
+      idMap.set(oldPageId, newPageId);
+      newPageIds.push(newPageId);
+    }
+
+    let newOnboardingPageId: Id<"pages"> | undefined;
+    if (source.onboardingPageId) {
+      const onboarding = await ctx.db.get(source.onboardingPageId);
+      if (onboarding) {
+        newOnboardingPageId = await ctx.db.insert("pages", {
+          quizId: newQuizId,
+          pageName: onboarding.pageName,
+          background: onboarding.background,
+          transitionEffect: onboarding.transitionEffect,
+          userId,
+          pageType: onboarding.pageType,
+          questionMode: onboarding.questionMode,
+        });
+        idMap.set(source.onboardingPageId, newOnboardingPageId);
+      }
+    }
+
+    const copyComponents = async (oldPageId: string, newPageId: string) => {
+      const components = await ctx.db
+        .query("components")
+        .withIndex("by_pageId", (q) => q.eq("pageId", oldPageId))
+        .collect();
+      for (const comp of components) {
+        await ctx.db.insert("components", {
+          pageId: newPageId,
+          pageType: comp.pageType,
+          type: comp.type,
+          data: comp.data,
+          props: remapIds(comp.props, idMap) as typeof comp.props,
+          action: comp.action,
+          actionProps: remapIds(comp.actionProps, idMap),
+          position: comp.position,
+          children: remapIds(comp.children, idMap) as typeof comp.children,
+          userId,
+        });
+      }
+    };
+
+    for (const oldPageId of source.pageIds) {
+      const newPageId = idMap.get(oldPageId);
+      if (newPageId) await copyComponents(oldPageId, newPageId);
+    }
+    for (const oldResultId of source.resultIds) {
+      const newResultId = idMap.get(oldResultId);
+      if (newResultId) await copyComponents(oldResultId, newResultId);
+    }
+    if (source.onboardingPageId && newOnboardingPageId) {
+      await copyComponents(source.onboardingPageId, newOnboardingPageId);
+    }
+
+    await ctx.db.patch(newQuizId, {
+      pageIds: newPageIds,
+      resultIds: newResultIds,
+      onboardingPageId: newOnboardingPageId,
+    });
+
+    return { ok: true, quizId: newQuizId, title };
   },
 });
