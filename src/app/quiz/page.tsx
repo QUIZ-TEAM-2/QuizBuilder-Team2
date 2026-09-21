@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Copy,
+  Search,
   Plus,
   Edit,
   Trash2,
@@ -236,8 +237,43 @@ function AuthenticatedQuizContent() {
   const setQuizFeaturedMutation = useMutation(api.quiz.setQuizFeatured);
   const duplicateQuizMutation = useMutation(api.quiz.duplicateQuiz);
   const [duplicatingId, setDuplicatingId] = useState<Id<"quiz"> | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "draft" | "published" | "closed"
+  >("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za">(
+    "newest",
+  );
 
   const quizzes = (quizzesQuery ?? []) as QuizWithPreview[];
+
+  // Search, status filter and sort for the quiz list. Frontend only.
+  const visibleQuizzes = useMemo(() => {
+    const source = (quizzesQuery ?? []) as QuizWithPreview[];
+    const term = searchTerm.trim().toLowerCase();
+    const filtered = source.filter((quiz) => {
+      if (statusFilter !== "all" && quiz.status !== statusFilter) return false;
+      if (!term) return true;
+      return (
+        quiz.title.toLowerCase().includes(term) ||
+        (quiz.description ?? "").toLowerCase().includes(term) ||
+        (quiz.ownerDisplayName ?? "").toLowerCase().includes(term)
+      );
+    });
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "oldest":
+          return a._creationTime - b._creationTime;
+        case "az":
+          return a.title.localeCompare(b.title);
+        case "za":
+          return b.title.localeCompare(a.title);
+        default:
+          return b._creationTime - a._creationTime;
+      }
+    });
+  }, [quizzesQuery, searchTerm, statusFilter, sortBy]);
+  const isFiltering = searchTerm.trim() !== "" || statusFilter !== "all";
   const isLoading = quizzesQuery === undefined;
   const isAdmin = user?.role === "admin";
 
@@ -490,13 +526,70 @@ function AuthenticatedQuizContent() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <h2 className="text-lg font-semibold text-slate-900">
                 Your Quizzes
+                {isFiltering ? (
+                  <span className="ml-2 text-sm font-normal text-slate-500">
+                    {visibleQuizzes.length} of {quizzes.length}
+                  </span>
+                ) : null}
               </h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search quizzes"
+                    aria-label="Search quizzes"
+                    className="w-full bg-white pl-9 sm:w-64"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as typeof statusFilter)
+                  }
+                  aria-label="Filter by status"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="closed">Closed</option>
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  aria-label="Sort quizzes"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700"
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="az">Title A to Z</option>
+                  <option value="za">Title Z to A</option>
+                </select>
+              </div>
             </div>
+            {visibleQuizzes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white py-16">
+                <p className="mb-4 text-slate-500">
+                  No quizzes match your search.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {quizzes.map((quiz) => (
+              {visibleQuizzes.map((quiz) => (
                 <div
                   key={quiz._id}
                   className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-lg"
