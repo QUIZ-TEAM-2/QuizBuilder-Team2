@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Copy,
   Plus,
   Edit,
   Trash2,
@@ -148,9 +149,9 @@ function QuizOnboardingPreview({
   const quizDetail = useQuery(api.quiz.getQuiz, { id: quizId });
   const onboarding = quizDetail?.onboardingPage as
     | {
-        components?: Component[];
-        background?: { color?: string; image?: string };
-      }
+      components?: Component[];
+      background?: { color?: string; image?: string };
+    }
     | null
     | undefined;
 
@@ -218,12 +219,12 @@ function AuthenticatedQuizContent() {
   });
 
   const [closeDialog, setCloseDialog] = useState<{
-  isOpen: boolean;
-  quiz: QuizWithPreview | null;
-}>({
-  isOpen: false,
-  quiz: null,
-});
+    isOpen: boolean;
+    quiz: QuizWithPreview | null;
+  }>({
+    isOpen: false,
+    quiz: null,
+  });
   const router = useRouter();
 
   const quizzesQuery = useQuery(api.quiz.getUserQuizzes);
@@ -233,7 +234,9 @@ function AuthenticatedQuizContent() {
   const publishQuizMutation = useMutation(api.quiz.publishQuiz);//add publish mutation
   const closeQuizMutation = useMutation(api.quiz.closeQuiz);//add closed mutation
   const setQuizFeaturedMutation = useMutation(api.quiz.setQuizFeatured);
-  
+  const duplicateQuizMutation = useMutation(api.quiz.duplicateQuiz);
+  const [duplicatingId, setDuplicatingId] = useState<Id<"quiz"> | null>(null);
+
   const quizzes = (quizzesQuery ?? []) as QuizWithPreview[];
   const isLoading = quizzesQuery === undefined;
   const isAdmin = user?.role === "admin";
@@ -288,7 +291,16 @@ function AuthenticatedQuizContent() {
       creatingRef.current = false;
     }
   };
-
+  const handleDuplicate = async (quizId: Id<"quiz">) => {
+    setDuplicatingId(quizId);
+    try {
+      await duplicateQuizMutation({ quizId });
+    } catch (err) {
+      console.error("Failed to duplicate quiz", err);
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
   const handleEdit = (quizId: Id<"quiz">) => {
     router.push(`/quiz/${quizId}`);
   };
@@ -424,30 +436,30 @@ function AuthenticatedQuizContent() {
           </div>
           <div className="flex items-center gap-3">
 
-          <Button
-            onClick={() => router.push("/discover")}
-            className="bg-slate-900 text-white hover:bg-slate-800"
-          >
-            Discover
-          </Button>
+            <Button
+              onClick={() => router.push("/discover")}
+              className="bg-slate-900 text-white hover:bg-slate-800"
+            >
+              Discover
+            </Button>
 
-          {isAdmin ? <AdminDashboardNavDropdown /> : <UserDashboardNavButton />}
+            {isAdmin ? <AdminDashboardNavDropdown /> : <UserDashboardNavButton />}
 
-          <Button
-            onClick={openCreateDialog}
-            disabled={isCreating}
-            className="bg-slate-900 text-white hover:bg-slate-800"
-          >
-            {isCreating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="mr-2 h-4 w-4" />
-            )}
-            New Quiz
-          </Button>
+            <Button
+              onClick={openCreateDialog}
+              disabled={isCreating}
+              className="bg-slate-900 text-white hover:bg-slate-800"
+            >
+              {isCreating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}
+              New Quiz
+            </Button>
 
-          <ConvexUserButton />
-        </div>
+            <ConvexUserButton />
+          </div>
         </header>
 
         {/* Quizzes Grid */}
@@ -492,11 +504,10 @@ function AuthenticatedQuizContent() {
                   {isAdmin ? (
                     <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
                       <div
-                        className={`pointer-events-none rounded-full border border-slate-950/10 bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-lg transition ${
-                          featuringId === quiz._id || featuredHintId === quiz._id
-                            ? "translate-x-0 opacity-100"
-                            : "translate-x-2 opacity-0 peer-hover:translate-x-0 peer-hover:opacity-100"
-                        }`}
+                        className={`pointer-events-none rounded-full border border-slate-950/10 bg-slate-950 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-lg transition ${featuringId === quiz._id || featuredHintId === quiz._id
+                          ? "translate-x-0 opacity-100"
+                          : "translate-x-2 opacity-0 peer-hover:translate-x-0 peer-hover:opacity-100"
+                          }`}
                       >
                         {quiz.featured ? "Featured" : "UnFeatured"}
                       </div>
@@ -512,11 +523,10 @@ function AuthenticatedQuizContent() {
                               ? "Remove from featured"
                               : "Mark as featured"
                         }
-                        className={`peer flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition ${
-                          quiz.featured
-                            ? "border-amber-300 bg-amber-400 text-white shadow-[0_12px_24px_rgba(251,191,36,0.32)]"
-                            : "border-slate-200 bg-white text-slate-700 shadow-[0_12px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 hover:bg-slate-50"
-                        } disabled:cursor-not-allowed disabled:opacity-70`}
+                        className={`peer flex h-10 w-10 items-center justify-center rounded-full border shadow-sm transition ${quiz.featured
+                          ? "border-amber-300 bg-amber-400 text-white shadow-[0_12px_24px_rgba(251,191,36,0.32)]"
+                          : "border-slate-200 bg-white text-slate-700 shadow-[0_12px_24px_rgba(15,23,42,0.12)] hover:border-slate-300 hover:bg-slate-50"
+                          } disabled:cursor-not-allowed disabled:opacity-70`}
                       >
                         {featuringId === quiz._id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -557,7 +567,7 @@ function AuthenticatedQuizContent() {
                     </p>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                     
+
                       <Badge
                         variant="outline"
                         className={`border-0 text-xs ${getQuizStatusBadgeClass(
@@ -566,8 +576,8 @@ function AuthenticatedQuizContent() {
                       >
                         {getQuizStatusLabel(quiz.status)}
                       </Badge>
-                    
-                      
+
+
                       <Badge
                         variant="secondary"
                         className="border-0 bg-slate-100 text-xs text-slate-600"
@@ -634,45 +644,59 @@ function AuthenticatedQuizContent() {
                         {getPrimaryQuizAction(quiz.status).label}
                       </Button>
 
-                      
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(quiz._id)}
-                      disabled={quiz.status === "published"}
-                      title={getEditQuizTitle(quiz.status)}
-                      className="flex-1 border-slate-200 hover:bg-slate-50"
-                    >
-                      <Edit className="mr-1 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                                          
-                      {shouldShowPublishAction(quiz.status) && (
+
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => void handlePublish(quiz)}
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                        onClick={() => handleEdit(quiz._id)}
+                        disabled={quiz.status === "published"}
+                        title={getEditQuizTitle(quiz.status)}
+                        className="flex-1 border-slate-200 hover:bg-slate-50"
                       >
-                        Publish
+                        <Edit className="mr-1 h-3.5 w-3.5" />
+                        Edit
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleDuplicate(quiz._id)}
+                        disabled={duplicatingId === quiz._id}
+                        className="border-slate-200 hover:bg-slate-50"
+                        title="Duplicate this quiz"
+                      >
+                        {duplicatingId === quiz._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+
+                      {shouldShowPublishAction(quiz.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handlePublish(quiz)}
+                          className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                        >
+                          Publish
+                        </Button>
                       )}
 
-                    {shouldShowPauseAction(quiz.status) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                        setCloseDialog({
-                          isOpen: true,
-                          quiz,
-                        })
-                      }
-                        className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
-                      >
-                        Pause
-                      </Button>
-                    )}
+                      {shouldShowPauseAction(quiz.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCloseDialog({
+                              isOpen: true,
+                              quiz,
+                            })
+                          }
+                          className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800"
+                        >
+                          Pause
+                        </Button>
+                      )}
 
                       <Button
                         variant="ghost"
@@ -824,81 +848,81 @@ function AuthenticatedQuizContent() {
       </Dialog>
 
 
-              {/* Pause Confirmation Dialog */}
-          <Dialog
-            open={closeDialog.isOpen}
-            onOpenChange={() =>
-              setCloseDialog({
-                isOpen: false,
-                quiz: null,
-              })
-            }
-          >
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader className="text-left">
-                <DialogTitle className="text-left">
-                  Pause Quiz
-                </DialogTitle>
+      {/* Pause Confirmation Dialog */}
+      <Dialog
+        open={closeDialog.isOpen}
+        onOpenChange={() =>
+          setCloseDialog({
+            isOpen: false,
+            quiz: null,
+          })
+        }
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-left">
+              Pause Quiz
+            </DialogTitle>
 
-                <DialogDescription className="text-left">
-                  Are you sure you want to pause{" "}
-                  <span className="text-slate-700">
-                    &quot;
-                    {closeDialog.quiz ? (
-                      <QuizTitleHeading
-                        quiz={closeDialog.quiz}
-                        className="font-semibold"
-                      />
-                    ) : null}
-                    &quot;
-                  </span>
-                  ? Public players will no longer be able to play it, but you can still preview it from the dashboard.
-                </DialogDescription>
-              </DialogHeader>
+            <DialogDescription className="text-left">
+              Are you sure you want to pause{" "}
+              <span className="text-slate-700">
+                &quot;
+                {closeDialog.quiz ? (
+                  <QuizTitleHeading
+                    quiz={closeDialog.quiz}
+                    className="font-semibold"
+                  />
+                ) : null}
+                &quot;
+              </span>
+              ? Public players will no longer be able to play it, but you can still preview it from the dashboard.
+            </DialogDescription>
+          </DialogHeader>
 
-              <DialogFooter className="flex-row justify-between gap-2 sm:justify-between sm:space-x-0">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setCloseDialog({
-                      isOpen: false,
-                      quiz: null,
-                    })
-                  }
-                  className="w-28"
-                >
-                  Cancel
-                </Button>
+          <DialogFooter className="flex-row justify-between gap-2 sm:justify-between sm:space-x-0">
+            <Button
+              variant="outline"
+              onClick={() =>
+                setCloseDialog({
+                  isOpen: false,
+                  quiz: null,
+                })
+              }
+              className="w-28"
+            >
+              Cancel
+            </Button>
 
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    if (!closeDialog.quiz) return;
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!closeDialog.quiz) return;
 
-                    try {
-                      await closeQuizMutation({
-                        id: closeDialog.quiz._id,
-                      });
+                try {
+                  await closeQuizMutation({
+                    id: closeDialog.quiz._id,
+                  });
 
-                      toast.success("Quiz paused");
+                  toast.success("Quiz paused");
 
-                      setCloseDialog({
-                        isOpen: false,
-                        quiz: null,
-                      });
-                    } catch (error) {
-                      console.error("Error closing quiz:", error);
-                      toast.error("Failed to close quiz");
-                    }
-                  }}
-                  className="w-28"
-                >
-                  Pause Quiz
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-              </div>
+                  setCloseDialog({
+                    isOpen: false,
+                    quiz: null,
+                  });
+                } catch (error) {
+                  console.error("Error closing quiz:", error);
+                  toast.error("Failed to close quiz");
+                }
+              }}
+              className="w-28"
+            >
+              Pause Quiz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
