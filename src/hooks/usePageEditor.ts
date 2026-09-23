@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { useEditingComponent } from "./useEditingComponent";
+import { useUndoRedo } from "./useUndoRedo";
 import type { PageTransitionEffect } from "@/lib/pageTransitions";
 import type { QuestionMode } from "@/types";
 import type {
@@ -69,7 +70,7 @@ type UsePageEditorOptions<TEntity extends PageEntity | ResultEntity> = {
   enableClipboard?: boolean;
   /** Whether to enable z-index reordering */
   enableZIndex?: boolean;
-  /** Whether to enable undo/redo placeholders */
+  /** Whether to enable undo/redo (Cmd+Z / Cmd+Shift+Z) */
   enableUndoRedo?: boolean;
 };
 
@@ -541,14 +542,55 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
     }
   }, [editing, entity, pageType, createComponent]);
 
-  // Undo/Redo handlers
-  const handleUndo = useCallback(() => {
-    toast.info("Undo not available in this version");
+  // Undo/Redo
+  const applyHistorySnapshot = useCallback(
+    async (components: Component[]) => {
+      if (!entity) return;
+      await setComponentsMutation({ id: entity._id, components });
+    },
+    [entity, setComponentsMutation],
+  );
+
+  const clearSelectionForHistory = useCallback(() => {
+    // Component IDs change when a snapshot is restored, so drop the selection.
+    editing.discardChanges();
+    setMultiSelectedIds([]);
+  }, [editing]);
+
+  const handleHistoryError = useCallback((error: unknown) => {
+    console.error("Failed to undo/redo:", error);
+    toast.error("Couldn't undo or redo that change");
   }, []);
 
+  const undoHistory = useUndoRedo({
+    entityId: entity?._id,
+    serverComponents,
+    enabled: enableUndoRedo,
+    applySnapshot: applyHistorySnapshot,
+    onBeforeApply: clearSelectionForHistory,
+    onError: handleHistoryError,
+  });
+  const { undo: historyUndo, redo: historyRedo } = undoHistory;
+
+  // An unsaved edit on the selected component (e.g. a drag that hasn't been
+  // saved yet) is the most recent change, so undo just throws it away.
+  const hasLocalEdit = editing.hasUnsavedChanges;
+  const canUndo = undoHistory.canUndo || hasLocalEdit;
+  const canRedo = undoHistory.canRedo && !hasLocalEdit;
+
+  const handleUndo = useCallback(() => {
+    if (editing.hasPendingChanges()) {
+      editing.discardChanges();
+      return;
+    }
+    void historyUndo();
+  }, [editing, historyUndo]);
+
   const handleRedo = useCallback(() => {
-    toast.info("Redo not available in this version");
-  }, []);
+    // A new local edit replaces whatever could have been redone.
+    if (editing.hasPendingChanges()) return;
+    void historyRedo();
+  }, [editing, historyRedo]);
 
   // Z-index handlers
   const selectedIndex = editing.selectedId
@@ -637,7 +679,10 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       const isMac = navigator.platform.toUpperCase().includes("MAC");
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
-      if (enableUndoRedo && modifier && e.key === "z" && !e.shiftKey) {
+      // Shift turns "z" into "Z" on most keyboards, so compare lowercase.
+      const key = e.key.toLowerCase();
+
+      if (enableUndoRedo && modifier && key === "z" && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
         return;
@@ -646,7 +691,7 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       if (
         enableUndoRedo &&
         modifier &&
-        ((e.key === "z" && e.shiftKey) || e.key === "y")
+        ((key === "z" && e.shiftKey) || key === "y")
       ) {
         e.preventDefault();
         handleRedo();
@@ -724,8 +769,8 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       canPaste: enableClipboard ? hasCopiedComponent : false,
       onUndo: enableUndoRedo ? handleUndo : undefined,
       onRedo: enableUndoRedo ? handleRedo : undefined,
-      canUndo: false,
-      canRedo: false,
+      canUndo: enableUndoRedo ? canUndo : false,
+      canRedo: enableUndoRedo ? canRedo : false,
       onBringForward: enableZIndex ? handleBringForward : undefined,
       onSendBackward: enableZIndex ? handleSendBackward : undefined,
       onBringToFront: enableZIndex ? handleBringToFront : undefined,
@@ -754,6 +799,8 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
       enableUndoRedo,
       handleUndo,
       handleRedo,
+      canUndo,
+      canRedo,
       enableZIndex,
       handleBringForward,
       handleSendBackward,

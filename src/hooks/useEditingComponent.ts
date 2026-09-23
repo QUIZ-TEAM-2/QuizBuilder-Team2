@@ -323,6 +323,20 @@ export function useEditingComponent(
     [],
   );
 
+  /** Whether the selected component has local edits not yet saved to Convex. */
+  const hasPendingChanges = useCallback(() => hasChangesRef.current, []);
+
+  /**
+   * Drops any unsaved local edits and clears the selection, so the component
+   * falls back to its saved state. Used by undo.
+   */
+  const discardChanges = useCallback(() => {
+    hasChangesRef.current = false;
+    originalComponentRef.current = null;
+    setEditingComponent(null);
+    setSelectedId(null);
+  }, []);
+
   // Get component for display - use local editing state if selected, otherwise from server
   const getDisplayComponent = useCallback(
     (componentId: string): Component | null => {
@@ -375,5 +389,9 @@ export function useEditingComponent(
 
     // Manual save (usually not needed - save happens on deselect)
     saveChanges,
+
+    // Undo support
+    hasPendingChanges,
+    discardChanges,
   };
 }

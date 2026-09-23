@@ -125,7 +125,7 @@ export default function ResultPagesTab({
     updateEntityMutation: updateResult,
     enableClipboard: false,
     enableZIndex: false,
-    enableUndoRedo: false,
+    enableUndoRedo: true,
   });
 
   const handleSelectResult = useCallback(

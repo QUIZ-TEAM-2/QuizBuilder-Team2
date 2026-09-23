@@ -23,8 +23,10 @@ import {
   LayoutTemplate,
   Loader2,
   Pencil,
+  Redo2,
   Save,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -620,6 +622,32 @@ export default function EditorPreviewPanel({
                   <Eye className="h-4 w-4" />
                 </Button>
               </div>
+              {onUndo !== undefined && (
+                <div className="flex items-center rounded-md border border-input bg-background">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onUndo}
+                    disabled={!canUndo || isTransitionPreviewing}
+                    className="h-8 w-9 rounded-none rounded-l-md"
+                    title="Undo (Cmd+Z)"
+                    aria-label="Undo"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onRedo}
+                    disabled={!canRedo || isTransitionPreviewing}
+                    className="h-8 w-9 rounded-none rounded-r-md border-l border-input"
+                    title="Redo (Cmd+Shift+Z)"
+                    aria-label="Redo"
+                  >
+                    <Redo2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"

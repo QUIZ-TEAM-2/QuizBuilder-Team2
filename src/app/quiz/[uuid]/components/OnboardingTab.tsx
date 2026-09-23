@@ -135,7 +135,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     updateEntityMutation: updateOnboardingPage,
     enableClipboard: true,
     enableZIndex: true,
-    enableUndoRedo: false,
+    enableUndoRedo: true,
   });
 
   const templates = useTemplates("onboarding");
