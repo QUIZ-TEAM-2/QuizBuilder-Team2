@@ -29,6 +29,7 @@ const baseComponentTypeUnion = v.union(
   v.literal("matching"),
   v.literal("slider"),
   v.literal("bgm"),
+  v.literal("timer"),
 );
 
 /** All component types including group */
@@ -42,6 +43,7 @@ export const componentTypeUnion = v.union(
   v.literal("matching"),
   v.literal("slider"),
   v.literal("bgm"),
+  v.literal("timer"),
   v.literal("group"),
 );
 

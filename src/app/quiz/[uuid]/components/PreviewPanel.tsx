@@ -70,7 +70,8 @@ type PreviewPanelProps = {
       | "input"
       | "matching"
       | "slider"
-      | "bgm",
+      | "bgm"
+      | "timer",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;

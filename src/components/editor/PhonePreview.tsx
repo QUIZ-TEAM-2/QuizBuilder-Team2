@@ -54,7 +54,8 @@ interface PhonePreviewProps {
       | "input"
       | "matching"
       | "slider"
-      | "bgm",
+      | "bgm"
+      | "timer",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
@@ -1129,11 +1130,11 @@ export default function PhonePreview({
     () =>
       isMarqueeActive
         ? {
-            left: Math.min(marqueeStart.x, marqueeEnd.x),
-            top: Math.min(marqueeStart.y, marqueeEnd.y),
-            width: Math.abs(marqueeEnd.x - marqueeStart.x),
-            height: Math.abs(marqueeEnd.y - marqueeStart.y),
-          }
+          left: Math.min(marqueeStart.x, marqueeEnd.x),
+          top: Math.min(marqueeStart.y, marqueeEnd.y),
+          width: Math.abs(marqueeEnd.x - marqueeStart.x),
+          height: Math.abs(marqueeEnd.y - marqueeStart.y),
+        }
         : null,
     [
       isMarqueeActive,
@@ -1279,7 +1280,8 @@ export default function PhonePreview({
         componentType === "input" ||
         componentType === "matching" ||
         componentType === "slider" ||
-        componentType === "bgm"
+        componentType === "bgm" ||
+        componentType === "timer"
       ) {
         event.preventDefault();
         event.stopPropagation();
@@ -1363,102 +1365,102 @@ export default function PhonePreview({
           >
             {slideComponents.length > 0
               ? slideComponents.map((component) => {
-                  const isAnswerSelected =
-                    selectedAnswers?.some((a) => a.id === component.id) ??
-                    false;
+                const isAnswerSelected =
+                  selectedAnswers?.some((a) => a.id === component.id) ??
+                  false;
 
-                  return (
-                    <PreviewComponentWrapper
-                      key={component.id}
-                      component={component}
-                      isEditable={interactive && isEditable}
-                      isSelected={
-                        interactive &&
-                        (selectedComponentId === component.id ||
-                          multiSelectedIds.includes(component.id) ||
-                          isAnswerSelected)
-                      }
-                      isMultiSelected={
-                        interactive && multiSelectedIds.includes(component.id)
-                      }
-                      onComponentClick={
-                        interactive ? onComponentClick : undefined
-                      }
-                      onComponentHover={
-                        interactive ? onComponentHover : undefined
-                      }
-                      selectedComponentId={
-                        interactive ? selectedComponentId : undefined
-                      }
-                      editingComponentId={
-                        interactive
-                          ? (editingComponentId ?? undefined)
-                          : undefined
-                      }
-                      onPositionChange={
-                        interactive ? onComponentPositionChange : undefined
-                      }
-                      containerRef={interactive ? containerRef : undefined}
-                      onTextChange={interactive ? onTextChange : undefined}
-                      onStartEditing={
-                        interactive ? setEditingComponentId : undefined
-                      }
-                      onImageEdit={interactive ? onImageEdit : undefined}
-                      onUpdateProps={interactive ? onUpdateProps : undefined}
-                      onUpdateData={interactive ? onUpdateData : undefined}
-                      onDeleteComponent={
-                        interactive ? onDeleteComponent : undefined
-                      }
-                      onOpenImagePicker={
-                        interactive ? onOpenImagePicker : undefined
-                      }
-                      onOpenAudioPicker={
-                        interactive ? onOpenAudioPicker : undefined
-                      }
-                      onUpdateAction={interactive ? onUpdateAction : undefined}
-                      onBringToFront={interactive ? onBringToFront : undefined}
-                      onSendToBack={interactive ? onSendToBack : undefined}
-                      canBringForward={interactive && canBringForward}
-                      canSendBackward={interactive && canSendBackward}
-                      pageType={pageType}
-                      onUnmerge={
-                        interactive &&
+                return (
+                  <PreviewComponentWrapper
+                    key={component.id}
+                    component={component}
+                    isEditable={interactive && isEditable}
+                    isSelected={
+                      interactive &&
+                      (selectedComponentId === component.id ||
+                        multiSelectedIds.includes(component.id) ||
+                        isAnswerSelected)
+                    }
+                    isMultiSelected={
+                      interactive && multiSelectedIds.includes(component.id)
+                    }
+                    onComponentClick={
+                      interactive ? onComponentClick : undefined
+                    }
+                    onComponentHover={
+                      interactive ? onComponentHover : undefined
+                    }
+                    selectedComponentId={
+                      interactive ? selectedComponentId : undefined
+                    }
+                    editingComponentId={
+                      interactive
+                        ? (editingComponentId ?? undefined)
+                        : undefined
+                    }
+                    onPositionChange={
+                      interactive ? onComponentPositionChange : undefined
+                    }
+                    containerRef={interactive ? containerRef : undefined}
+                    onTextChange={interactive ? onTextChange : undefined}
+                    onStartEditing={
+                      interactive ? setEditingComponentId : undefined
+                    }
+                    onImageEdit={interactive ? onImageEdit : undefined}
+                    onUpdateProps={interactive ? onUpdateProps : undefined}
+                    onUpdateData={interactive ? onUpdateData : undefined}
+                    onDeleteComponent={
+                      interactive ? onDeleteComponent : undefined
+                    }
+                    onOpenImagePicker={
+                      interactive ? onOpenImagePicker : undefined
+                    }
+                    onOpenAudioPicker={
+                      interactive ? onOpenAudioPicker : undefined
+                    }
+                    onUpdateAction={interactive ? onUpdateAction : undefined}
+                    onBringToFront={interactive ? onBringToFront : undefined}
+                    onSendToBack={interactive ? onSendToBack : undefined}
+                    canBringForward={interactive && canBringForward}
+                    canSendBackward={interactive && canSendBackward}
+                    pageType={pageType}
+                    onUnmerge={
+                      interactive &&
                         component.type === "group" &&
                         onUnmergeGroup
-                          ? () => onUnmergeGroup(component.id)
-                          : undefined
-                      }
-                      onClearMultiSelect={
-                        interactive && multiSelectedIds.length > 0
-                          ? () => onMultiSelect?.([])
-                          : undefined
-                      }
-                      multiSelectedIds={multiSelectedIds}
-                      onMultiSelect={interactive ? onMultiSelect : undefined}
-                      onComponentAction={
-                        interactive ? onComponentAction : undefined
-                      }
-                      rankingOrderByComponent={rankingOrderByComponent}
-                      onRankingChange={
-                        interactive ? onRankingChange : undefined
-                      }
-                      onRankingSubmit={
-                        interactive ? onRankingSubmit : undefined
-                      }
-                      matchingPairsByComponent={matchingPairsByComponent}
-                      onMatchingChange={
-                        interactive ? onMatchingChange : undefined
-                      }
-                      sliderValueByComponent={sliderValueByComponent}
-                      onSliderChange={interactive ? onSliderChange : undefined}
-                      currentPageNumber={currentPageNumber}
-                      totalPages={totalPages}
-                      bgmMuted={bgmMuted}
-                      bgmBlocked={bgmBlocked}
-                      onBGMToggleMute={onBGMToggleMute}
-                    />
-                  );
-                })
+                        ? () => onUnmergeGroup(component.id)
+                        : undefined
+                    }
+                    onClearMultiSelect={
+                      interactive && multiSelectedIds.length > 0
+                        ? () => onMultiSelect?.([])
+                        : undefined
+                    }
+                    multiSelectedIds={multiSelectedIds}
+                    onMultiSelect={interactive ? onMultiSelect : undefined}
+                    onComponentAction={
+                      interactive ? onComponentAction : undefined
+                    }
+                    rankingOrderByComponent={rankingOrderByComponent}
+                    onRankingChange={
+                      interactive ? onRankingChange : undefined
+                    }
+                    onRankingSubmit={
+                      interactive ? onRankingSubmit : undefined
+                    }
+                    matchingPairsByComponent={matchingPairsByComponent}
+                    onMatchingChange={
+                      interactive ? onMatchingChange : undefined
+                    }
+                    sliderValueByComponent={sliderValueByComponent}
+                    onSliderChange={interactive ? onSliderChange : undefined}
+                    currentPageNumber={currentPageNumber}
+                    totalPages={totalPages}
+                    bgmMuted={bgmMuted}
+                    bgmBlocked={bgmBlocked}
+                    onBGMToggleMute={onBGMToggleMute}
+                  />
+                );
+              })
               : (emptyStateContent ?? defaultEmptyState)}
 
             {interactive && isMarqueeActive && marqueeRect && (

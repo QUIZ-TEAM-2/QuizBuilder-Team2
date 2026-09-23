@@ -10,6 +10,7 @@ import {
   Music,
   Shuffle,
   SlidersHorizontal,
+  Timer as TimerIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -87,6 +88,11 @@ export function ComponentDock({
     e.dataTransfer.effectAllowed = "copy";
   };
 
+  const handleTimerDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("componentType", "timer");
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   const baseIconClass = cn(
     "flex h-11 w-11 cursor-grab items-center justify-center rounded-lg",
     "bg-gray-100 text-gray-600 transition-all hover:bg-blue-100 hover:text-blue-600",
@@ -130,6 +136,16 @@ export function ComponentDock({
           title="Drag to add BGM"
         >
           <Music className="h-5 w-5" />
+        </div>
+
+        {/* Timer Icon */}
+        <div
+          draggable
+          onDragStart={handleTimerDragStart}
+          className={baseIconClass}
+          title="Drag to add Timer"
+        >
+          <TimerIcon className="h-5 w-5" />
         </div>
 
         {/* Shapes with Popover */}
