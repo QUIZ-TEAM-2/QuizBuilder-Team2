@@ -15,7 +15,8 @@ export type ComponentType =
   | "input"
   | "matching"
   | "slider"
-  | "bgm";
+  | "bgm"
+  | "timer";
 
 export type ComponentCategory = "content";
 
@@ -232,7 +233,8 @@ export interface EditorActions {
       | "input"
       | "slider"
       | "matching"
-      | "bgm",
+      | "bgm"
+      | "timer",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;

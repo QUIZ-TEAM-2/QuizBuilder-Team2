@@ -316,7 +316,8 @@ export default function TemplateEditorPage() {
         | "input"
         | "matching"
         | "slider"
-        | "bgm",
+        | "bgm"
+        | "timer",
       dropPosition: { x: number; y: number },
       shapeVariant?: string,
     ) => {
@@ -382,6 +383,15 @@ export default function TemplateEditorPage() {
           props.thumbColor = "#111827";
           props.textColor = "#FFFFFF";
           props.showValue = true;
+        } else if (componentType === "timer") {
+          width = 26;
+          height = 10;
+          props.duration = 60;
+          props.warningAt = 10;
+          props.textColor = "#f8fafc";
+          props.warningColor = "#f87171";
+          props.backgroundColor = "#020617";
+          props.showBackground = true;
         } else if (componentType === "bgm") {
           width = 12;
           height = 8;
