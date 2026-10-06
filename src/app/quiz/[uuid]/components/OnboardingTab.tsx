@@ -39,6 +39,7 @@ type QuizBasicInfo = {
   brandName?: string;
   brandAvatar?: string;
   coverImage?: string;
+  shuffleQuestions?: boolean;
 };
 
 type QuizTopic =
@@ -60,6 +61,7 @@ type BasicInfoForm = {
   brandName: string;
   brandAvatar: string;
   coverImage: string;
+  shuffleQuestions: boolean;
 };
 
 const QUIZ_TOPICS: Array<{ value: QuizTopic; label: string }> = [
@@ -106,6 +108,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     brandName: DEFAULT_BRAND_NAME,
     brandAvatar: "",
     coverImage: "",
+    shuffleQuestions: false,
   });
 
   const quizInfo = quizQuery as (typeof quizQuery & QuizBasicInfo) | undefined;
@@ -150,6 +153,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       brandName: quizInfo.brandName ?? DEFAULT_BRAND_NAME,
       brandAvatar: quizInfo.brandAvatar ?? "",
       coverImage: quizInfo.coverImage ?? "",
+      shuffleQuestions: quizInfo.shuffleQuestions === true,
     });
   }, [quizInfo]);
 
@@ -229,6 +233,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
           brandName: nextInfo.brandName.trim() || DEFAULT_BRAND_NAME,
           brandAvatar: nextInfo.brandAvatar.trim(),
           coverImage: nextInfo.coverImage.trim(),
+          shuffleQuestions: nextInfo.shuffleQuestions,
         });
       } catch (error) {
         console.error("Failed to update quiz info:", error);
@@ -613,6 +618,38 @@ function QuizBasicInfoSidebar({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="quiz-shuffle-questions">Question Order</Label>
+          <label
+            htmlFor="quiz-shuffle-questions"
+            className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 px-3 py-2"
+          >
+            <input
+              id="quiz-shuffle-questions"
+              type="checkbox"
+              className="mt-0.5 h-4 w-4"
+              checked={value.shuffleQuestions}
+              disabled={isSaving}
+              onChange={(event) => {
+                const nextValue = {
+                  ...value,
+                  shuffleQuestions: event.target.checked,
+                };
+                onChange(nextValue);
+                onSave(nextValue);
+              }}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">
+                Shuffle questions
+              </span>
+              <span className="block text-xs text-gray-500">
+                Each player gets the question pages in a random order.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="space-y-2">
