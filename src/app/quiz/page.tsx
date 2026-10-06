@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import type { Id, Component } from "@/types";
 import ConvexUserButton from "@/components/auth/convex-user-button";
+import AiQuizGeneratorDialog from "@/components/quiz/AiQuizGeneratorDialog";
 import {
   AdminDashboardNavDropdown,
   UserDashboardNavButton,
@@ -237,6 +238,7 @@ function AuthenticatedQuizContent() {
   const setQuizFeaturedMutation = useMutation(api.quiz.setQuizFeatured);
   const duplicateQuizMutation = useMutation(api.quiz.duplicateQuiz);
   const [duplicatingId, setDuplicatingId] = useState<Id<"quiz"> | null>(null);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "draft" | "published" | "closed"
@@ -480,6 +482,15 @@ function AuthenticatedQuizContent() {
             </Button>
 
             {isAdmin ? <AdminDashboardNavDropdown /> : <UserDashboardNavButton />}
+
+            <Button
+              onClick={() => setAiDialogOpen(true)}
+              variant="outline"
+              className="gap-2 border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
 
             <Button
               onClick={openCreateDialog}
@@ -812,6 +823,8 @@ function AuthenticatedQuizContent() {
           </>
         )}
       </div>
+
+      <AiQuizGeneratorDialog open={aiDialogOpen} onOpenChange={setAiDialogOpen} />
 
       {/* Create Quiz Dialog */}
       <Dialog
