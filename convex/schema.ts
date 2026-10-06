@@ -61,6 +61,8 @@ export default defineSchema({
     //Added status field to the quiz table to track the lifecycle state of each quiz.
     customSlug: v.optional(v.string()),
     publishVersion: v.optional(v.number()),
+    /** Show question pages in a random order for each player. */
+    shuffleQuestions: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])

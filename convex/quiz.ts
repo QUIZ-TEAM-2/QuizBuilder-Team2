@@ -710,6 +710,7 @@ export const updateQuiz = mutation({
     brandName: v.optional(v.string()),
     brandAvatar: v.optional(v.string()),
     coverImage: v.optional(v.string()),
+    shuffleQuestions: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -741,6 +742,7 @@ export const updateQuiz = mutation({
       brandName: string | undefined;
       brandAvatar: string | undefined;
       coverImage: string | undefined;
+      shuffleQuestions: boolean;
     }> = {};
 
     if (args.title !== undefined) {
@@ -780,6 +782,8 @@ export const updateQuiz = mutation({
     if (args.brandAvatar !== undefined)
       updateData.brandAvatar = args.brandAvatar;
     if (args.coverImage !== undefined) updateData.coverImage = args.coverImage;
+    if (args.shuffleQuestions !== undefined)
+      updateData.shuffleQuestions = args.shuffleQuestions;
 
     await ctx.db.patch(args.id, { ...updateData, updatedAt: Date.now() });
     return {
@@ -2293,6 +2297,7 @@ export const duplicateQuiz = mutation({
       brandAvatar: source.brandAvatar,
       coverImage: source.coverImage,
       topic: source.topic,
+      shuffleQuestions: source.shuffleQuestions,
       tags: source.tags,
       userId,
       pageIds: [],

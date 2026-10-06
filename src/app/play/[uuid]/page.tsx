@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Share2 } from "lucide-react";
 import PhonePreview from "@/components/editor/PhonePreview";
 import { Button } from "@/components/ui/button";
 import { api } from "../../../../convex/_generated/api";
@@ -41,6 +41,14 @@ import {
   resolveQuizPlaySurfaceFromFlag,
 } from "@/lib/quiz-access-rules";
 import { toast } from "sonner";
+import {
+  clearSavedProgress,
+  readSavedProgress,
+  seededShuffle,
+  writeSavedProgress,
+  type SavedPlayProgress,
+} from "@/lib/playProgress";
+import { shareResult } from "@/lib/shareResultImage";
 
 type PlayPage = {
   _id: Id<"pages"> | string;
@@ -136,9 +144,21 @@ export default function PlayQuizPage() {
   const playSource = searchParams?.get("source");
   const returnTo = searchParams?.get("returnTo");
 
-  const [sessionId] = useState<string>(() =>
-    createClientSessionId(playSurface, crypto.randomUUID()),
-  );
+  // Saved progress from an earlier visit (public play only). If present, the
+  // player continues the same session instead of starting a new one.
+  const resumeRef = useRef<SavedPlayProgress | null>(null);
+  const resumeAppliedRef = useRef(false);
+  const [sessionId, setSessionId] = useState<string>(() => {
+    if (!isPreviewMode && uuid && typeof window !== "undefined") {
+      const saved = readSavedProgress(uuid);
+      if (saved) {
+        resumeRef.current = saved;
+        return saved.sessionId;
+      }
+    }
+    return createClientSessionId(playSurface, crypto.randomUUID());
+  });
+  const [isSharing, setIsSharing] = useState(false);
   const [language] = useState<"en" | "cn">(() => getClientLanguage());
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -197,10 +217,16 @@ export default function PlayQuizPage() {
   );
   const submitQuizLeadMutation = useMutation(api.quizPlay.submitQuizLead);
 
-  const pages = useMemo<PlayPage[]>(
-    () => (quizQuery?.pages ?? []) as PlayPage[],
-    [quizQuery?.pages],
-  );
+  const shuffleQuestions =
+    (quizQuery as { shuffleQuestions?: boolean } | null | undefined)
+      ?.shuffleQuestions === true;
+
+  // Question order. When shuffling is on, the order is seeded by the session,
+  // so it stays the same for this player (including after a refresh).
+  const pages = useMemo<PlayPage[]>(() => {
+    const ordered = (quizQuery?.pages ?? []) as PlayPage[];
+    return shuffleQuestions ? seededShuffle(ordered, sessionId) : ordered;
+  }, [quizQuery?.pages, shuffleQuestions, sessionId]);
 
   const results = useMemo<PlayPage[]>(
     () => (quizQuery?.results ?? []) as PlayPage[],
@@ -390,6 +416,11 @@ export default function PlayQuizPage() {
       return;
     }
 
+    // A resumed session already counted its view on the first visit.
+    if (resumeRef.current?.sessionId === sessionId) {
+      return;
+    }
+
     loggedViewSessionIdsRef.current.add(sessionId);
 
     void recordQuizView({
@@ -401,6 +432,62 @@ export default function PlayQuizPage() {
       console.error("Failed to record quiz view", error);
     });
   }, [isPreviewMode, quizQuery?._id, recordQuizView, sessionId, language]);
+
+  // Resume a quiz the player started earlier on this device.
+  useEffect(() => {
+    if (resumeAppliedRef.current) return;
+    const saved = resumeRef.current;
+    if (!saved || isPreviewMode || !uuid || !quizQuery) return;
+    if (pages.length === 0) return;
+    resumeAppliedRef.current = true;
+
+    const index = pages.findIndex((page) => String(page._id) === saved.pageId);
+    if (index < 0) {
+      // The quiz changed since then; start fresh with a new session.
+      clearSavedProgress(uuid);
+      resumeRef.current = null;
+      setSessionId(createClientSessionId(playSurface, crypto.randomUUID()));
+      return;
+    }
+
+    setQuizStarted(true);
+    setCurrentPageIndex(index);
+    toast("Welcome back! Picking up where you left off.", {
+      duration: 8000,
+      action: {
+        label: "Start over",
+        onClick: () => {
+          clearSavedProgress(uuid);
+          window.location.reload();
+        },
+      },
+    });
+  }, [isPreviewMode, pages, playSurface, quizQuery, uuid]);
+
+  // Save progress so a refresh or a later visit can resume.
+  useEffect(() => {
+    if (isPreviewMode || !uuid) return;
+    if (quizCompleted) {
+      clearSavedProgress(uuid);
+      return;
+    }
+    if (!quizStarted) return;
+    const page = pages[currentPageIndex];
+    if (!page) return;
+    writeSavedProgress(uuid, {
+      sessionId,
+      pageId: String(page._id),
+      savedAt: Date.now(),
+    });
+  }, [
+    currentPageIndex,
+    isPreviewMode,
+    pages,
+    quizCompleted,
+    quizStarted,
+    sessionId,
+    uuid,
+  ]);
 
   /** Result page impressions for CTR denominators */
   useEffect(() => {
@@ -1320,6 +1407,45 @@ export default function PlayQuizPage() {
     router.push(fallbackHref);
   }, [isPreviewMode, playSource, returnTo, router]);
 
+  const handleShareResult = async () => {
+    if (!resultPage || !quizQuery || isSharing) return;
+    setIsSharing(true);
+    try {
+      const quizUrl = `${window.location.origin}/play/${uuid ?? ""}`;
+      const outcome = await shareResult({
+        quizTitle: quizQuery.title,
+        resultName: resultPage.pageName?.trim() || "my result",
+        brandName: (quizQuery as { brandName?: string }).brandName,
+        quizUrl,
+      });
+      if (outcome === "downloaded") {
+        toast.success("Result image downloaded");
+      }
+    } catch (error) {
+      console.error("Failed to share result", error);
+      toast.error("Couldn't create the share image");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const shareButton =
+    quizCompleted && resultPage && !isCalculatingResults ? (
+      <Button
+        size="sm"
+        className="fixed bottom-6 right-4 z-30 gap-2 rounded-full bg-emerald-500 px-4 text-white shadow-lg hover:bg-emerald-600"
+        onClick={() => void handleShareResult()}
+        disabled={isSharing}
+      >
+        {isSharing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Share2 className="h-4 w-4" />
+        )}
+        Share result
+      </Button>
+    ) : null;
+
   const backButton = (
     <Button
       variant="ghost"
@@ -1455,6 +1581,7 @@ export default function PlayQuizPage() {
     <div className="fixed inset-0 h-screen min-h-[100dvh] w-full overflow-hidden overscroll-none bg-black">
       <audio ref={bgmAudioRef} preload="auto" />
       {backButton}
+      {shareButton}
       {isDesktopViewport === null ? null : isDesktopViewport ? (
         <div className="grid h-screen grid-cols-3 bg-black">
           <div />
