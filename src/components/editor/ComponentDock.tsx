@@ -11,6 +11,7 @@ import {
   Shuffle,
   SlidersHorizontal,
   Timer as TimerIcon,
+  Video as VideoIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -93,6 +94,11 @@ export function ComponentDock({
     e.dataTransfer.effectAllowed = "copy";
   };
 
+  const handleVideoDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("componentType", "video");
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
   const baseIconClass = cn(
     "flex h-11 w-11 cursor-grab items-center justify-center rounded-lg",
     "bg-gray-100 text-gray-600 transition-all hover:bg-blue-100 hover:text-blue-600",
@@ -146,6 +152,16 @@ export function ComponentDock({
           title="Drag to add Timer"
         >
           <TimerIcon className="h-5 w-5" />
+        </div>
+
+        {/* Video Icon */}
+        <div
+          draggable
+          onDragStart={handleVideoDragStart}
+          className={baseIconClass}
+          title="Drag to add Video"
+        >
+          <VideoIcon className="h-5 w-5" />
         </div>
 
         {/* Shapes with Popover */}

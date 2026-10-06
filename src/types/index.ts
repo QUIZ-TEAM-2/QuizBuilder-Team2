@@ -16,7 +16,8 @@ export type ComponentType =
   | "matching"
   | "slider"
   | "bgm"
-  | "timer";
+  | "timer"
+  | "video";
 
 export type ComponentCategory = "content";
 
@@ -234,7 +235,8 @@ export interface EditorActions {
       | "slider"
       | "matching"
       | "bgm"
-      | "timer",
+      | "timer"
+      | "video",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
