@@ -43,7 +43,7 @@ describe("preview/public access rules", () => {
     it("keeps published green, draft amber, and paused readable", () => {
       assert.equal(
         getQuizStatusBadgeClass("published"),
-        "bg-emerald-600 text-white",
+        "bg-emerald-100 text-emerald-700",
       );
       assert.equal(
         getQuizStatusBadgeClass("draft"),

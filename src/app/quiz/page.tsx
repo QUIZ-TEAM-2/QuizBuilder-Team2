@@ -557,7 +557,7 @@ function AuthenticatedQuizContent() {
                   <option value="all">All statuses</option>
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
-                  <option value="closed">Closed</option>
+                  <option value="closed">Paused</option>
                 </select>
                 <select
                   value={sortBy}

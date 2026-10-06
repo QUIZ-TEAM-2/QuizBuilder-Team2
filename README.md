@@ -15,15 +15,15 @@ Create, share, and explore personality quizzes with a visual drag-and-drop edito
 
 ## Tech Stack
 
-| Layer          | Technology                              |
-| -------------- | --------------------------------------- |
-| Framework      | Next.js 15 (App Router, Turbopack)      |
-| Language       | TypeScript                              |
+| Layer          | Technology                                 |
+| -------------- | ------------------------------------------ |
+| Framework      | Next.js 15 (App Router, Turbopack)         |
+| Language       | TypeScript                                 |
 | Backend        | Convex (database, functions, file storage) |
-| Authentication | Convex Auth + Google OAuth              |
-| Styling        | Tailwind CSS + shadcn/ui + Radix UI     |
-| Icons          | Lucide React                            |
-| Notifications  | Sonner                                  |
+| Authentication | Convex Auth + Google OAuth                 |
+| Styling        | Tailwind CSS + shadcn/ui + Radix UI        |
+| Icons          | Lucide React                               |
+| Notifications  | Sonner                                     |
 
 ## Project Structure
 
@@ -73,118 +73,95 @@ quizbuilder/
 
 ### Prerequisites
 
-- Node.js 18+
-- A Google OAuth client (from [Google Cloud Console](https://console.cloud.google.com))
+- Node.js 20+
+- Access to the team's Convex project, **QuizBuilder P16** (ask Amaar for an invite to the Convex team)
+- Access to the `QUIZ-TEAM-2/QuizBuilder-Team2` GitHub repository
 
-### 1. Install Dependencies
+### 1. Clone and install
 
 ```bash
+git clone https://github.com/QUIZ-TEAM-2/QuizBuilder-Team2.git
+cd QuizBuilder-Team2
 npm install
 ```
 
-### 2. Set Up Convex
+### 2. Connect to Convex
 
 ```bash
 npx convex dev
 ```
 
-This creates a Convex project, generates your deployment URL, and starts the dev backend.
+Log in, then choose the **existing** project **QuizBuilder P16**. Do not create a new project. Convex gives you your own personal dev deployment, so your test data never clashes with anyone else's, and it writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` into `.env.local` for you.
 
-### 3. Configure Environment Variables
+The login keys (`JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`) are set as **default environment variables** on the Convex project, so new dev deployments get them automatically and sign-in works straight away. See `.env.example` for what belongs in `.env.local`.
 
-Create `.env.local`:
-
-```bash
-CONVEX_DEPLOYMENT=dev:<your-deployment-slug>
-NEXT_PUBLIC_CONVEX_URL=https://<your-deployment-slug>.convex.cloud
-
-AUTH_GOOGLE_ID=<your-google-client-id>
-AUTH_GOOGLE_SECRET=<your-google-client-secret>
-```
-
-Also add `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` in the [Convex Dashboard](https://dashboard.convex.dev) under your project's environment variables.
-
-### Email OTP (SendGrid) configuration
-
-Password sign-up / sign-in uses SendGrid to send a one-time verification code.
-
-In the Convex Dashboard (per deployment), set:
-
-- `AUTH_SENDGRID_API_KEY`: SendGrid API key with Mail Send permission.
-- `AUTH_SENDGRID_FROM`: Verified sender identity in SendGrid, e.g. `Display Name <verified@example.com>`.
-
-SendGrid setup (dev):
-
-1. In SendGrid, complete **Single Sender Verification** (or authenticate a domain).
-2. Create an **API Key** (Mail Send access).
-3. Add the env vars above to the Convex deployment you're using for dev.
-
-### 4. Run the Dev Server
+### 3. Run the app
 
 ```bash
-# Terminal 1 — Convex backend
-npm run convex:dev
+# Terminal 1: Convex backend (leave running)
+npx convex dev
 
-# Terminal 2 — Next.js frontend
+# Terminal 2: Next.js frontend
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Scripts
+### Optional: Google sign-in and email codes
 
-```bash
-npm run dev              # Start Next.js dev server (Turbopack)
-npm run build            # Production build
-npm run start            # Start production server
-npm run preview          # Build + start
-npm run convex:dev       # Start Convex dev backend
-npm run convex:deploy    # Deploy Convex to production
-npm run lint             # ESLint
-npm run lint:fix         # ESLint with auto-fix
-npm run typecheck        # TypeScript type check
-npm run check            # Lint + typecheck
-npm run format:write     # Prettier format
-npm run format:check     # Prettier check
-```
+- **Google sign-in:** set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` on your Convex dev deployment, and make sure its `https://<deployment>.convex.site/api/auth/callback/google` URL is listed in the Google Cloud OAuth client.
+- **Email OTP (SendGrid):** password sign-up sends a verification code through SendGrid. Set `AUTH_SENDGRID_API_KEY` (Mail Send permission) and `AUTH_SENDGRID_FROM` (a verified sender, e.g. `Display Name <verified@example.com>`) on the Convex deployment you are using.
+
+### Generated Convex code
+
+`convex/_generated/` is committed to git. `npx convex dev` keeps it up to date while it runs, so whenever you change files in `convex/`, commit the changes in `convex/_generated/` along with them.
+
+## Contributing
+
+1. Start from an up to date `main`:
+   ```bash
+   git checkout main && git pull
+   git checkout -b feature/short-description
+   ```
+   Branch types: `feature`, `fix`, `docs`, `refactor`, `test`, `others`.
+2. Make your change and test it on localhost.
+3. Run the checks locally: `npm run check` and `npm test`.
+4. Push and open a pull request into `main` using the PR template.
+5. **Wait for all checks to go green before merging.** Every PR gets:
+   - **CI** (GitHub Actions): typecheck, lint and unit tests
+   - **Vercel preview**: a test link with its own fresh Convex backend (sign up with a new account there; it does not share data with dev or production)
+6. Get a review, then merge. Vercel deploys `main` to production automatically, including the Convex backend.
 
 ## Database Schema
 
-| Table            | Purpose                                          |
-| ---------------- | ------------------------------------------------ |
-| `quiz`           | Quiz metadata, ordered page/result ID arrays     |
-| `pages`          | Quiz pages and onboarding pages                  |
-| `results`        | Result pages                                     |
-| `components`     | Individual components with position, props, actions |
-| `images`         | User-uploaded image metadata + storage references |
-| `templates`      | Reusable page templates                          |
-| `quizSessions`   | Play session tracking (supports anonymous users) |
-| `quizResponses`  | Individual answer recordings with result mapping |
-| `quizResults`    | Calculated final results per session             |
+| Table           | Purpose                                             |
+| --------------- | --------------------------------------------------- |
+| `quiz`          | Quiz metadata, ordered page/result ID arrays        |
+| `pages`         | Quiz pages and onboarding pages                     |
+| `results`       | Result pages                                        |
+| `components`    | Individual components with position, props, actions |
+| `images`        | User-uploaded image metadata + storage references   |
+| `templates`     | Reusable page templates                             |
+| `quizSessions`  | Play session tracking (supports anonymous users)    |
+| `quizResponses` | Individual answer recordings with result mapping    |
+| `quizResults`   | Calculated final results per session                |
 
 ## Deployment
 
-### Backend
+Deployment is automatic; there is nothing to run by hand.
 
-```bash
-npm run convex:deploy
-```
+- **Production:** every merge to `main` triggers a Vercel build with the build command `npx convex deploy --cmd 'npm run build' --typecheck disable`. That pushes the Convex backend to the production deployment first, then builds and deploys the frontend.
+- **Previews:** every pull request gets a Vercel preview build. It uses a Convex **preview deploy key**, so each preview runs against its own fresh Convex backend.
 
-### Frontend (Vercel)
+### Configuration
 
-```bash
-npx vercel
-```
+| Where                            | Variable                                                                                                                                               | Scope                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Vercel                           | `CONVEX_DEPLOY_KEY` (production deploy key)                                                                                                            | Production only         |
+| Vercel                           | `CONVEX_DEPLOY_KEY` (preview deploy key)                                                                                                               | Preview only            |
+| Convex project, default env vars | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`                                                                                                                  | Development and Preview |
+| Convex production deployment     | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SENDGRID_API_KEY`, `AUTH_SENDGRID_FROM`, `ADMIN_BOOTSTRAP_SECRET` | Production              |
 
-Set these environment variables in Vercel:
-
-```
-NEXT_PUBLIC_CONVEX_URL=https://<your-prod-deployment>.convex.cloud
-CONVEX_DEPLOYMENT=prod:<your-prod-deployment>
-```
-
-Set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` in the Convex production environment.
+Never use the production deploy key for Preview builds: Convex refuses it on purpose so a pull request can't overwrite the live backend.
 
 ## License
-
-
