@@ -37,12 +37,24 @@ function UnauthenticatedGate() {
 export default function HomePage() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const user = useQuery(api.auth.currentUser);
+  const emailVerificationEnabled = useQuery(
+    api.auth.isEmailVerificationEnabled,
+  );
 
+  // When email verification codes are turned off (no SendGrid on this
+  // deployment), password accounts never get an emailVerificationTime, so a
+  // signed-in user counts as verified.
   const emailVerified =
-    user != null && user.emailVerificationTime !== undefined;
+    user != null &&
+    (user.emailVerificationTime !== undefined ||
+      emailVerificationEnabled === false);
   const canEnterApp = isAuthenticated && emailVerified;
 
-  if (isLoading || (isAuthenticated && user === undefined)) {
+  if (
+    isLoading ||
+    (isAuthenticated &&
+      (user === undefined || emailVerificationEnabled === undefined))
+  ) {
     return (
       <main>
         <section className="relative flex h-screen w-screen flex-col items-center justify-center bg-white font-sans">
