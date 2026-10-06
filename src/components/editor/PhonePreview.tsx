@@ -110,6 +110,8 @@ interface PhonePreviewProps {
   // Frameless mode - removes phone frame styling for full-screen play mode
   frameless?: boolean;
   selectedAnswers?: Component[];
+  /** Knowledge quizzes: answer IDs to highlight as correct or incorrect. */
+  answerFeedbackById?: Record<string, "correct" | "incorrect">;
   transitionEffect?: PageTransitionEffect;
   transitionKey?: string;
   transitionSequence?: number;
@@ -175,6 +177,8 @@ interface PreviewWrapperProps {
   bgmMuted?: boolean;
   bgmBlocked?: boolean;
   onBGMToggleMute?: () => void;
+  /** Knowledge quizzes: right/wrong highlight shown briefly after answering. */
+  answerFeedback?: "correct" | "incorrect";
 }
 
 type TransitionSlideSnapshot = {
@@ -245,6 +249,7 @@ function PreviewComponentWrapper({
   bgmMuted,
   bgmBlocked,
   onBGMToggleMute,
+  answerFeedback,
 }: PreviewWrapperProps & { component: Component }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<ResizeHandle>(null);
@@ -673,9 +678,22 @@ function PreviewComponentWrapper({
               : undefined
           }
         />
-        {isSelected && !isEditable && (
+        {isSelected && !isEditable && !answerFeedback && (
           <div className="pointer-events-none absolute right-1 top-1 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white">
             ✓
+          </div>
+        )}
+        {answerFeedback && !isEditable && (
+          <div
+            className={`pointer-events-none absolute inset-0 z-30 flex items-center justify-end rounded-md border-4 pr-2 ${
+              answerFeedback === "correct"
+                ? "border-emerald-400 bg-emerald-400/25"
+                : "border-red-500 bg-red-500/25"
+            }`}
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-900">
+              {answerFeedback === "correct" ? "✓" : "✗"}
+            </span>
           </div>
         )}
       </div>
@@ -776,6 +794,7 @@ export default function PhonePreview({
   onBGMToggleMute,
   frameless = false,
   selectedAnswers,
+  answerFeedbackById,
   transitionEffect = "none",
   transitionKey,
   transitionSequence,
@@ -1466,6 +1485,11 @@ export default function PhonePreview({
                     bgmMuted={bgmMuted}
                     bgmBlocked={bgmBlocked}
                     onBGMToggleMute={onBGMToggleMute}
+                    answerFeedback={
+                      interactive
+                        ? answerFeedbackById?.[component.id]
+                        : undefined
+                    }
                   />
                 );
               })
@@ -1530,6 +1554,7 @@ export default function PhonePreview({
       );
     },
     [
+      answerFeedbackById,
       contentClassName,
       currentPageNumber,
       bgmBlocked,

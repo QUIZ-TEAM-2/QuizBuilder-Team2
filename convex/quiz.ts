@@ -711,6 +711,9 @@ export const updateQuiz = mutation({
     brandAvatar: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     shuffleQuestions: v.optional(v.boolean()),
+    quizType: v.optional(
+      v.union(v.literal("personality"), v.literal("knowledge")),
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -743,6 +746,7 @@ export const updateQuiz = mutation({
       brandAvatar: string | undefined;
       coverImage: string | undefined;
       shuffleQuestions: boolean;
+      quizType: "personality" | "knowledge";
     }> = {};
 
     if (args.title !== undefined) {
@@ -784,6 +788,7 @@ export const updateQuiz = mutation({
     if (args.coverImage !== undefined) updateData.coverImage = args.coverImage;
     if (args.shuffleQuestions !== undefined)
       updateData.shuffleQuestions = args.shuffleQuestions;
+    if (args.quizType !== undefined) updateData.quizType = args.quizType;
 
     await ctx.db.patch(args.id, { ...updateData, updatedAt: Date.now() });
     return {
@@ -1071,6 +1076,7 @@ export const updateResult = mutation({
     pageName: v.optional(v.string()),
     background: v.optional(pageBackgroundSchema),
     transitionEffect: v.optional(pageTransitionEffectSchema),
+    minScorePercent: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -1093,9 +1099,16 @@ export const updateResult = mutation({
       pageName: string | undefined;
       background: typeof args.background;
       transitionEffect: typeof args.transitionEffect;
+      minScorePercent: number;
     }> = {};
 
     if (args.pageName !== undefined) updateData.pageName = args.pageName;
+    if (args.minScorePercent !== undefined) {
+      updateData.minScorePercent = Math.min(
+        100,
+        Math.max(0, Math.round(args.minScorePercent)),
+      );
+    }
     if (args.background !== undefined) updateData.background = args.background;
     if (args.transitionEffect !== undefined) {
       updateData.transitionEffect = args.transitionEffect;
@@ -1573,6 +1586,7 @@ export const updateComponentAction = mutation({
             component.actionProps !== null
             ? component.actionProps
             : {}),
+          ...(args.actionProps as Record<string, unknown>),
           resultMapping: {
             ...((typeof component.actionProps === "object" &&
               component.actionProps !== null &&
@@ -2298,6 +2312,7 @@ export const duplicateQuiz = mutation({
       coverImage: source.coverImage,
       topic: source.topic,
       shuffleQuestions: source.shuffleQuestions,
+      quizType: source.quizType,
       tags: source.tags,
       userId,
       pageIds: [],
@@ -2318,6 +2333,7 @@ export const duplicateQuiz = mutation({
       const newResultId = await ctx.db.insert("results", {
         quizId: newQuizId,
         pageName: result.pageName,
+        minScorePercent: result.minScorePercent,
         background: result.background,
         transitionEffect: result.transitionEffect,
         userId,

@@ -49,6 +49,14 @@ import {
   type SavedPlayProgress,
 } from "@/lib/playProgress";
 import { shareResult } from "@/lib/shareResultImage";
+import {
+  applyScoreTokens,
+  getCorrectAnswerIds,
+  isAnswerCorrect,
+  normalizeQuizType,
+  pickKnowledgeResult,
+  scoreKnowledgeQuiz,
+} from "../../../../convex/knowledgeScoring";
 
 type PlayPage = {
   _id: Id<"pages"> | string;
@@ -159,6 +167,15 @@ export default function PlayQuizPage() {
     return createClientSessionId(playSurface, crypto.randomUUID());
   });
   const [isSharing, setIsSharing] = useState(false);
+  // Knowledge quizzes: right/wrong highlight after answering, and final score.
+  const [answerFeedbackById, setAnswerFeedbackById] = useState<Record<
+    string,
+    "correct" | "incorrect"
+  > | null>(null);
+  const [knowledgeScore, setKnowledgeScore] = useState<{
+    score: number;
+    total: number;
+  } | null>(null);
   const [language] = useState<"en" | "cn">(() => getClientLanguage());
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -217,6 +234,11 @@ export default function PlayQuizPage() {
   );
   const submitQuizLeadMutation = useMutation(api.quizPlay.submitQuizLead);
 
+  const isKnowledgeQuiz =
+    normalizeQuizType(
+      (quizQuery as { quizType?: unknown } | null | undefined)?.quizType,
+    ) === "knowledge";
+
   const shuffleQuestions =
     (quizQuery as { shuffleQuestions?: boolean } | null | undefined)
       ?.shuffleQuestions === true;
@@ -262,10 +284,23 @@ export default function PlayQuizPage() {
         ? resultPage
         : currentQuestionPage;
 
-  const displayComponents = useMemo(
-    () => (displayPage?.components ?? []) as Component[],
-    [displayPage?.components],
-  );
+  const displayComponents = useMemo(() => {
+    const components = (displayPage?.components ?? []) as Component[];
+    if (!quizCompleted || !knowledgeScore) return components;
+    // Fill in {score} and {total} on the result page.
+    return components.map((component) =>
+      component.type === "text" && typeof component.data === "string"
+        ? {
+            ...component,
+            data: applyScoreTokens(
+              component.data,
+              knowledgeScore.score,
+              knowledgeScore.total,
+            ),
+          }
+        : component,
+    );
+  }, [displayPage?.components, knowledgeScore, quizCompleted]);
 
   const activeBGM = useMemo(() => {
     const component = displayComponents.find(
@@ -952,6 +987,7 @@ export default function PlayQuizPage() {
       setQuizStarted(true);
       setQuizCompleted(false);
       setResultPage(null);
+      setKnowledgeScore(null);
       setCurrentPageIndex(0);
       setSelectedAnswers([]);
       previewResponsesByPageRef.current = {};
@@ -1024,6 +1060,39 @@ export default function PlayQuizPage() {
     ],
   );
 
+  /** Preview mode scores knowledge quizzes locally (nothing is saved). */
+  const calculatePreviewKnowledgeResult = useCallback(() => {
+    const chosenIdsByPage = new Map<string, string[]>(
+      Object.entries(previewResponsesByPageRef.current).map(
+        ([pageId, responses]) => [
+          pageId,
+          responses.map((response) => response.answerBoxId),
+        ],
+      ),
+    );
+    const { score, total } = scoreKnowledgeQuiz(
+      pages.map((page) => ({
+        id: String(page._id),
+        questionMode: page.questionMode,
+        correctAnswerIds: getCorrectAnswerIds(
+          (page.components ?? []) as unknown[],
+        ),
+      })),
+      chosenIdsByPage,
+    );
+    const winningResultPageId =
+      pickKnowledgeResult(
+        results.map((result) => ({
+          id: String(result._id),
+          minScorePercent: (result as { minScorePercent?: unknown })
+            .minScorePercent,
+        })),
+        score,
+        total,
+      ) ?? "";
+    return { winningResultPageId, score, total };
+  }, [pages, results]);
+
   const handleFinishQuiz = useCallback(async () => {
     if (quizCompleted) return;
     if (!sessionId || !quizQuery) {
@@ -1052,11 +1121,21 @@ export default function PlayQuizPage() {
       setIsCalculatingResults(true);
       try {
         const outcome = isPreviewMode
-          ? calculatePreviewResult(previewResponsesByPageRef.current, resultIds)
+          ? isKnowledgeQuiz
+            ? calculatePreviewKnowledgeResult()
+            : calculatePreviewResult(previewResponsesByPageRef.current, resultIds)
           : await calculateResults({
               sessionId,
               quizId: quizQuery._id,
             });
+        if (
+          outcome &&
+          "score" in outcome &&
+          typeof outcome.score === "number" &&
+          typeof outcome.total === "number"
+        ) {
+          setKnowledgeScore({ score: outcome.score, total: outcome.total });
+        }
         if (outcome && outcome.winningResultPageId) {
           const matched = results.find(
             (page) => String(page._id) === String(outcome.winningResultPageId),
@@ -1075,7 +1154,9 @@ export default function PlayQuizPage() {
     setQuizCompleted(true);
   }, [
     calculateResults,
+    calculatePreviewKnowledgeResult,
     currentPageIndex,
+    isKnowledgeQuiz,
     isPreviewMode,
     quizCompleted,
     quizQuery,
@@ -1088,6 +1169,33 @@ export default function PlayQuizPage() {
     submitSliderResponsesForCurrentPage,
     updateSession,
   ]);
+
+  /**
+   * Knowledge quizzes: briefly highlights the chosen answers (and the correct
+   * ones) before moving on. Does nothing if no correct answer is marked.
+   */
+  const showKnowledgeFeedback = useCallback(
+    async (chosenIds: string[]) => {
+      const correctIds = getCorrectAnswerIds(
+        (currentQuestionPage?.components ?? []) as unknown[],
+      );
+      if (correctIds.length === 0) return;
+      const feedback: Record<string, "correct" | "incorrect"> = {};
+      for (const id of correctIds) feedback[id] = "correct";
+      for (const id of chosenIds) {
+        if (!correctIds.includes(id)) feedback[id] = "incorrect";
+      }
+      setAnswerFeedbackById(feedback);
+      if (isAnswerCorrect(questionMode, chosenIds, correctIds)) {
+        toast.success("Correct!", { duration: 1200 });
+      } else {
+        toast.error("Not quite", { duration: 1200 });
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1100));
+      setAnswerFeedbackById(null);
+    },
+    [currentQuestionPage, questionMode],
+  );
 
   const handleAnswerBoxAction = useCallback(
     async (actionProps?: Record<string, unknown>, component?: Component) => {
@@ -1116,6 +1224,9 @@ export default function PlayQuizPage() {
             answerBoxId: component?.id ?? "unknown",
             resultMapping,
           });
+          if (isKnowledgeQuiz && component) {
+            await showKnowledgeFeedback([component.id]);
+          }
           await savePageResponses(pageId, [
             {
               answerBoxId: component?.id ?? "unknown",
@@ -1176,11 +1287,13 @@ export default function PlayQuizPage() {
       currentQuestionPage,
       handleFinishQuiz,
       handleGoToPage,
+      isKnowledgeQuiz,
       pages.length,
       quizCompleted,
       quizQuery,
       savePageResponses,
       sessionId,
+      showKnowledgeFeedback,
       questionMode,
     ],
   );
@@ -1207,6 +1320,10 @@ export default function PlayQuizPage() {
       responses,
     });
 
+    if (isKnowledgeQuiz) {
+      await showKnowledgeFeedback(selectedAnswers.map((answer) => answer.id));
+    }
+
     await savePageResponses(pageId, responses);
 
     setSelectedAnswers([]);
@@ -1223,11 +1340,13 @@ export default function PlayQuizPage() {
     currentQuestionPage,
     handleFinishQuiz,
     handleGoToPage,
+    isKnowledgeQuiz,
     pages.length,
     quizQuery,
     savePageResponses,
     selectedAnswers,
     sessionId,
+    showKnowledgeFeedback,
   ]);
 
   const handleComponentAction = useCallback(
@@ -1414,7 +1533,10 @@ export default function PlayQuizPage() {
       const quizUrl = `${window.location.origin}/play/${uuid ?? ""}`;
       const outcome = await shareResult({
         quizTitle: quizQuery.title,
-        resultName: resultPage.pageName?.trim() || "my result",
+        resultName: knowledgeScore
+          ? `${knowledgeScore.score} out of ${knowledgeScore.total}`
+          : resultPage.pageName?.trim() || "my result",
+        lead: knowledgeScore ? "I scored" : undefined,
         brandName: (quizQuery as { brandName?: string }).brandName,
         quizUrl,
       });
@@ -1550,6 +1672,7 @@ export default function PlayQuizPage() {
         onMatchingChange={handleMatchingChange}
         // New props for answer selection state
         selectedAnswers={selectedAnswers}
+        answerFeedbackById={answerFeedbackById ?? undefined}
         rankingOrderByComponent={rankingOrderByComponent}
         onRankingChange={handleRankingChange}
         onTextChange={handleTextChange}

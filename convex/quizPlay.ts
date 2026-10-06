@@ -1,6 +1,14 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  getCorrectAnswerIds,
+  normalizeQuizType,
+  pickKnowledgeResult,
+  scoreKnowledgeQuiz,
+  type ScorablePage,
+} from "./knowledgeScoring";
 
 function logQuizPlayServer(label: string, payload: Record<string, unknown>) {
   console.log(`[quiz-play] ${label}`, payload);
@@ -680,6 +688,14 @@ export const calculateQuizResults = mutation({
       throw new Error("Quiz not found");
     }
 
+    if (normalizeQuizType(quiz.quizType) === "knowledge") {
+      return await calculateKnowledgeResult(ctx, {
+        quiz,
+        sessionId: args.sessionId,
+        responses,
+      });
+    }
+
     // Calculate total scores per result page
     const totalScores: Record<string, number> = {};
 
@@ -828,3 +844,91 @@ export const getQuizAnalytics = query({
     };
   },
 });
+
+/**
+ * Knowledge quizzes: score right/wrong answers on the server from the saved
+ * components (not from anything the player's browser sent), then pick the
+ * result band for that score.
+ */
+async function calculateKnowledgeResult(
+  ctx: MutationCtx,
+  {
+    quiz,
+    sessionId,
+    responses,
+  }: {
+    quiz: Doc<"quiz">;
+    sessionId: string;
+    responses: Array<Doc<"quizResponses">>;
+  },
+) {
+  const scorablePages: ScorablePage[] = [];
+  for (const pageId of quiz.pageIds) {
+    const page = await ctx.db.get(pageId);
+    if (!page || page.pageType === "onboarding") continue;
+    const components = await ctx.db
+      .query("components")
+      .withIndex("by_pageId", (q) => q.eq("pageId", String(pageId)))
+      .collect();
+    scorablePages.push({
+      id: String(pageId),
+      questionMode: page.questionMode,
+      correctAnswerIds: getCorrectAnswerIds(components),
+    });
+  }
+
+  const chosenIdsByPage = new Map<string, string[]>();
+  for (const response of responses) {
+    if (response.questionType && response.questionType !== "answerBox") continue;
+    const chosen = chosenIdsByPage.get(response.pageId) ?? [];
+    chosen.push(response.answerBoxId);
+    chosenIdsByPage.set(response.pageId, chosen);
+  }
+
+  const { score, total } = scoreKnowledgeQuiz(scorablePages, chosenIdsByPage);
+  const resultDocs = (
+    await Promise.all(quiz.resultIds.map((resultId) => ctx.db.get(resultId)))
+  ).filter((doc): doc is Doc<"results"> => doc !== null);
+  const winningResultPageId =
+    pickKnowledgeResult(
+      resultDocs.map((doc) => ({
+        id: String(doc._id),
+        minScorePercent: doc.minScorePercent,
+      })),
+      score,
+      total,
+    ) ?? "";
+
+  const session = await ctx.db
+    .query("quizSessions")
+    .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+    .first();
+  const winningDoc = resultDocs.find(
+    (doc) => String(doc._id) === winningResultPageId,
+  );
+  const winningIndex = quiz.resultIds.findIndex(
+    (resultId) => String(resultId) === winningResultPageId,
+  );
+
+  const resultId = await ctx.db.insert("quizResults", {
+    sessionId,
+    quizId: quiz._id,
+    resultPageId: winningResultPageId,
+    quizVersion: session?.quizVersion ?? 0,
+    resultNameSnapshot:
+      winningDoc?.pageName?.trim() ||
+      (winningIndex >= 0 ? `Result ${winningIndex + 1}` : undefined),
+    totalScores: {},
+    knowledgeScore: score,
+    knowledgeTotal: total,
+    completedAt: Date.now(),
+  });
+
+  return {
+    resultId,
+    winningResultPageId,
+    totalScores: {} as Record<string, number>,
+    score,
+    total,
+  };
+}
