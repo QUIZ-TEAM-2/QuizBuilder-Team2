@@ -40,7 +40,10 @@ type QuizBasicInfo = {
   brandAvatar?: string;
   coverImage?: string;
   shuffleQuestions?: boolean;
+  quizType?: QuizType;
 };
+
+type QuizType = "personality" | "knowledge";
 
 type QuizTopic =
   | "general"
@@ -62,6 +65,7 @@ type BasicInfoForm = {
   brandAvatar: string;
   coverImage: string;
   shuffleQuestions: boolean;
+  quizType: QuizType;
 };
 
 const QUIZ_TOPICS: Array<{ value: QuizTopic; label: string }> = [
@@ -109,6 +113,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     brandAvatar: "",
     coverImage: "",
     shuffleQuestions: false,
+    quizType: "personality",
   });
 
   const quizInfo = quizQuery as (typeof quizQuery & QuizBasicInfo) | undefined;
@@ -154,6 +159,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       brandAvatar: quizInfo.brandAvatar ?? "",
       coverImage: quizInfo.coverImage ?? "",
       shuffleQuestions: quizInfo.shuffleQuestions === true,
+      quizType: quizInfo.quizType === "knowledge" ? "knowledge" : "personality",
     });
   }, [quizInfo]);
 
@@ -234,6 +240,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
           brandAvatar: nextInfo.brandAvatar.trim(),
           coverImage: nextInfo.coverImage.trim(),
           shuffleQuestions: nextInfo.shuffleQuestions,
+          quizType: nextInfo.quizType,
         });
       } catch (error) {
         console.error("Failed to update quiz info:", error);
@@ -593,6 +600,37 @@ function QuizBasicInfoSidebar({
                 </Badge>
               ))}
             </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="quiz-type">Quiz Type</Label>
+          <Select
+            value={value.quizType}
+            onValueChange={(quizType: QuizType) => {
+              const nextValue = { ...value, quizType };
+              onChange(nextValue);
+              onSave(nextValue);
+            }}
+            disabled={isSaving}
+          >
+            <SelectTrigger id="quiz-type">
+              <SelectValue placeholder="Select a quiz type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="personality">
+                Personality (answers point to results)
+              </SelectItem>
+              <SelectItem value="knowledge">
+                Knowledge (right answers and a score)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {value.quizType === "knowledge" ? (
+            <p className="text-xs text-gray-500">
+              Mark correct answers and set score bands in the Result Mapping
+              tab. Use {"{score}"} and {"{total}"} in result page text.
+            </p>
           ) : null}
         </div>
 

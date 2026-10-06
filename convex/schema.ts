@@ -63,6 +63,8 @@ export default defineSchema({
     publishVersion: v.optional(v.number()),
     /** Show question pages in a random order for each player. */
     shuffleQuestions: v.optional(v.boolean()),
+    /** "personality" (default, answers point to results) or "knowledge" (right/wrong answers and a score). */
+    quizType: v.optional(v.union(v.literal("personality"), v.literal("knowledge"))),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
@@ -95,6 +97,8 @@ export default defineSchema({
   results: defineTable({
     quizId: v.id("quiz"),
     pageName: v.optional(v.string()),
+    /** Knowledge quizzes: lowest score (0-100%) that earns this result. */
+    minScorePercent: v.optional(v.number()),
     background: v.optional(pageBackgroundSchema),
     transitionEffect: v.optional(pageTransitionEffectSchema),
     userId: v.id("users"),
@@ -207,6 +211,9 @@ export default defineSchema({
     quizVersion: v.optional(v.number()),
     resultNameSnapshot: v.optional(v.string()),
     totalScores: v.record(v.string(), v.number()), // Final scores per result page
+    /** Knowledge quizzes: correct answers and scorable questions. */
+    knowledgeScore: v.optional(v.number()),
+    knowledgeTotal: v.optional(v.number()),
     completedAt: v.number(),
   })
     .index("by_sessionId", ["sessionId"])

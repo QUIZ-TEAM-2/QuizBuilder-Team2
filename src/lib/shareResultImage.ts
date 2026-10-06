@@ -8,6 +8,8 @@ export type ShareResultDetails = {
   resultName: string;
   brandName?: string;
   quizUrl: string;
+  /** Line above the result. Defaults to "I got"; knowledge quizzes use "I scored". */
+  lead?: string;
 };
 
 const WIDTH = 1080;
@@ -79,7 +81,7 @@ export async function createResultImage(
 
   ctx.fillStyle = "#34d399";
   ctx.font = `600 52px ${FONT}`;
-  ctx.fillText("I got", WIDTH / 2, 470);
+  ctx.fillText(details.lead ?? "I got", WIDTH / 2, 470);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `800 104px ${FONT}`;
@@ -128,7 +130,9 @@ export async function shareResult(
 ): Promise<ShareOutcome> {
   const blob = await createResultImage(details);
   const file = new File([blob], "my-quiz-result.png", { type: "image/png" });
-  const text = `I got "${details.resultName}" on ${details.quizTitle}! Take the quiz:`;
+  const text = details.lead
+    ? `${details.lead} ${details.resultName} on ${details.quizTitle}! Take the quiz:`
+    : `I got "${details.resultName}" on ${details.quizTitle}! Take the quiz:`;
 
   if (
     typeof navigator.canShare === "function" &&

@@ -21,6 +21,7 @@ import type * as auth from "../auth.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
+import type * as knowledgeScoring from "../knowledgeScoring.js";
 import type * as quiz from "../quiz.js";
 import type * as quizAccessRules from "../quizAccessRules.js";
 import type * as quizPlay from "../quizPlay.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   bootstrap: typeof bootstrap;
   http: typeof http;
   images: typeof images;
+  knowledgeScoring: typeof knowledgeScoring;
   quiz: typeof quiz;
   quizAccessRules: typeof quizAccessRules;
   quizPlay: typeof quizPlay;

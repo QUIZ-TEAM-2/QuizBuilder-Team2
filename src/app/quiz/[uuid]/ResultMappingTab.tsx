@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { CircleHelp, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
+import {
+  normalizeQuizType,
+  resolveMinScorePercent,
+} from "../../../../convex/knowledgeScoring";
 import {
   Select,
   SelectContent,
@@ -229,6 +233,51 @@ function RankingScoreTips() {
   );
 }
 
+/** Percentage box that saves on Enter or when you click away. */
+function ScoreBandInput({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: number;
+  disabled?: boolean;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+
+  const commit = () => {
+    const parsed = Number(draft);
+    if (draft.trim() === "" || !Number.isFinite(parsed)) {
+      setDraft(String(value));
+      return;
+    }
+    const next = Math.min(100, Math.max(0, Math.round(parsed)));
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-gray-500">From</span>
+      <Input
+        type="number"
+        min={0}
+        max={100}
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commit();
+        }}
+        className="h-8 w-20"
+      />
+      <span className="text-xs text-gray-500">%</span>
+    </div>
+  );
+}
+
 export default function ResultMappingTab({ quizId }: ResultMappingTabProps) {
   const quizQuery = useQuery(
     api.quiz.getQuiz,
@@ -236,6 +285,11 @@ export default function ResultMappingTab({ quizId }: ResultMappingTabProps) {
   );
 
   const updateComponentAction = useMutation(api.quiz.updateComponentAction);
+  const updateResult = useMutation(api.quiz.updateResult);
+  const isKnowledge =
+    normalizeQuizType(
+      (quizQuery as { quizType?: unknown } | null | undefined)?.quizType,
+    ) === "knowledge";
 
   const pages = useMemo(
     () => (quizQuery?.pages ?? []) as PageEntity[],
@@ -336,6 +390,47 @@ export default function ResultMappingTab({ quizId }: ResultMappingTabProps) {
       }
     },
     [setComponentSaving, updateComponentAction],
+  );
+
+  const handleCorrectChange = useCallback(
+    async (component: Component, isCorrect: boolean) => {
+      setComponentSaving(component.id, true);
+      try {
+        await updateComponentAction({
+          componentId: component.id as Id<"components">,
+          action: "answerBox",
+          actionProps: {
+            ...(typeof component.actionProps === "object" &&
+            component.actionProps !== null
+              ? component.actionProps
+              : {}),
+            isCorrect,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to update correct answer", error);
+        toast.error("Failed to update correct answer");
+      } finally {
+        setComponentSaving(component.id, false);
+      }
+    },
+    [setComponentSaving, updateComponentAction],
+  );
+
+  const handleMinScoreChange = useCallback(
+    async (resultId: string, minScorePercent: number) => {
+      try {
+        await updateResult({
+          id: resultId as Id<"results">,
+          minScorePercent,
+        });
+        toast.success("Score band updated");
+      } catch (error) {
+        console.error("Failed to update score band", error);
+        toast.error("Failed to update score band");
+      }
+    },
+    [updateResult],
   );
 
   const handleResultWeightChange = useCallback(
@@ -841,6 +936,50 @@ export default function ResultMappingTab({ quizId }: ResultMappingTabProps) {
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto pr-1">
+      {isKnowledge ? (
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="text-sm font-medium text-gray-900">Score bands</div>
+          <p className="mt-1 text-xs text-gray-500">
+            Players get the highest result whose minimum score they reach.
+            Mark the correct answers on each question below. Put{" "}
+            <code>{"{score}"}</code> and <code>{"{total}"}</code> in result page
+            text to show the player&apos;s score.
+          </p>
+          {results.length === 0 ? (
+            <div className="mt-3 rounded-md border border-dashed bg-gray-50 px-3 py-2 text-sm text-gray-500">
+              Create result pages first, e.g. &quot;Keep practising&quot;,
+              &quot;Nice work&quot; and &quot;Genius&quot;.
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {results.map((result, index) => {
+                const resultId = String(result._id);
+                return (
+                  <div
+                    key={resultId}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="text-sm text-gray-700">
+                      {result.pageName?.trim() || `Result ${index + 1}`}
+                    </div>
+                    <ScoreBandInput
+                      value={resolveMinScorePercent(
+                        (result as { minScorePercent?: unknown })
+                          .minScorePercent,
+                        index,
+                        results.length,
+                      )}
+                      onCommit={(value) =>
+                        void handleMinScoreChange(resultId, value)
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
       {pages.map((page) => {
         const buttons =
           (page.components ?? []).filter(
@@ -1062,7 +1201,31 @@ export default function ResultMappingTab({ quizId }: ResultMappingTabProps) {
                                 </div>
                               )}
 
-                              {currentAction === "answerBox" && (
+                              {currentAction === "answerBox" && isKnowledge && (
+                                <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4"
+                                    checked={
+                                      (
+                                        component.actionProps as
+                                          | { isCorrect?: unknown }
+                                          | undefined
+                                      )?.isCorrect === true
+                                    }
+                                    disabled={isSaving}
+                                    onChange={(event) =>
+                                      void handleCorrectChange(
+                                        component,
+                                        event.target.checked,
+                                      )
+                                    }
+                                  />
+                                  Correct answer
+                                </label>
+                              )}
+
+                              {currentAction === "answerBox" && !isKnowledge && (
                                 <div className="mt-3 space-y-2">
                                   {results.length === 0 ? (
                                     <div className="rounded-md border border-dashed bg-gray-50 px-3 py-2 text-sm text-gray-500">
