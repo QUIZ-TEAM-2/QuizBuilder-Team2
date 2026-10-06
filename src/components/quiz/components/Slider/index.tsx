@@ -3,11 +3,13 @@ import { SliderToolbar } from "./Toolbar";
 import { SliderView } from "./View";
 import {
   DEFAULT_SLIDER_RANGE_COLOR,
+  DEFAULT_SLIDER_STAR_COLOR,
   DEFAULT_SLIDER_TEXT_COLOR,
   DEFAULT_SLIDER_TRACK_COLOR,
   DEFAULT_SLIDER_VALUE,
   SLIDER_COMPONENT_SLUG,
   normalizeSliderConfig,
+  normalizeSliderVariant,
   type SliderComponent,
 } from "./types";
 import {
@@ -64,6 +66,12 @@ function renderSliderComponent({
           : DEFAULT_SLIDER_TEXT_COLOR
       }
       showValue={props.showValue !== false}
+      variant={normalizeSliderVariant(props.variant)}
+      starColor={
+        typeof props.starColor === "string"
+          ? props.starColor
+          : DEFAULT_SLIDER_STAR_COLOR
+      }
       sliderValue={helpers.sliderValue}
       isEditable={helpers.isEditable}
       onSliderChange={

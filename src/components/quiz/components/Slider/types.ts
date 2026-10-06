@@ -20,8 +20,14 @@ export interface SliderProps {
   thumbColor?: string;
   textColor?: string;
   showValue?: boolean;
+  /** "slider" (default) or "stars" for a star rating. Scoring is identical. */
+  variant?: SliderVariant;
+  /** Colour of filled stars in the "stars" variant. */
+  starColor?: string;
   [key: string]: unknown;
 }
+
+export type SliderVariant = "slider" | "stars";
 
 export interface SliderComponent extends Component {
   type: "slider";
@@ -38,6 +44,10 @@ export const DEFAULT_SLIDER_TRACK_COLOR = "#FFFFFF";
 export const DEFAULT_SLIDER_RANGE_COLOR = "#FFFFFF";
 export const DEFAULT_SLIDER_THUMB_COLOR = "#111827";
 export const DEFAULT_SLIDER_TEXT_COLOR = "#FFFFFF";
+export const DEFAULT_SLIDER_STAR_COLOR = "#FACC15";
+
+export const normalizeSliderVariant = (value: unknown): SliderVariant =>
+  value === "stars" ? "stars" : "slider";
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);

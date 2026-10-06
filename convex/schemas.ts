@@ -30,6 +30,7 @@ const baseComponentTypeUnion = v.union(
   v.literal("slider"),
   v.literal("bgm"),
   v.literal("timer"),
+  v.literal("video"),
 );
 
 /** All component types including group */
@@ -44,6 +45,7 @@ export const componentTypeUnion = v.union(
   v.literal("slider"),
   v.literal("bgm"),
   v.literal("timer"),
+  v.literal("video"),
   v.literal("group"),
 );
 

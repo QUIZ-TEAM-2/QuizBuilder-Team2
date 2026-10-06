@@ -8,7 +8,13 @@ import {
   type CSSProperties,
   type PointerEvent,
 } from "react";
-import { getSliderIntervalIndex, snapSliderValueToTick } from "./types";
+import { Star } from "lucide-react";
+import {
+  DEFAULT_SLIDER_STAR_COLOR,
+  getSliderIntervalIndex,
+  snapSliderValueToTick,
+  type SliderVariant,
+} from "./types";
 
 export interface SliderViewProps {
   min: number;
@@ -22,6 +28,8 @@ export interface SliderViewProps {
   sliderValue?: number;
   isEditable?: boolean;
   onSliderChange?: (value: number, intervalIndex: number) => void;
+  variant?: SliderVariant;
+  starColor?: string;
 }
 
 export function SliderView({
@@ -36,6 +44,8 @@ export function SliderView({
   sliderValue,
   isEditable = false,
   onSliderChange,
+  variant = "slider",
+  starColor = DEFAULT_SLIDER_STAR_COLOR,
 }: SliderViewProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const activePointerIdRef = useRef<number | null>(null);
@@ -118,6 +128,61 @@ export function SliderView({
     commitValue(localValue);
     activePointerIdRef.current = null;
   };
+
+  if (variant === "stars") {
+    // One star per whole value from 1 to max. Tapping star N picks value N
+    // (never below min). Scoring and result mapping work exactly like the
+    // slider, because the stored value and interval are the same.
+    const starValues = Array.from({ length: Math.max(max, 1) }, (_, i) => i + 1);
+    return (
+      <div
+        className="flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden px-2"
+        style={{ color: textColor }}
+      >
+        <div
+          className="flex w-full items-center justify-center gap-[2%]"
+          role="radiogroup"
+          aria-label="Star rating"
+        >
+          {starValues.map((value) => {
+            const filled = value <= localValue;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={localValue === value}
+                aria-label={`${value} star${value === 1 ? "" : "s"}`}
+                disabled={isEditable}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isEditable) return;
+                  commitValue(Math.max(value, min));
+                }}
+                className="flex aspect-square min-w-0 flex-1 items-center justify-center disabled:cursor-default"
+                style={{ maxWidth: "3rem" }}
+              >
+                <Star
+                  className="h-full w-full"
+                  strokeWidth={1.5}
+                  style={{
+                    color: filled ? starColor : textColor,
+                    fill: filled ? starColor : "transparent",
+                    opacity: filled ? 1 : 0.45,
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+        {showValue && (
+          <div className="text-xs font-semibold tabular-nums">
+            {localValue} / {max}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

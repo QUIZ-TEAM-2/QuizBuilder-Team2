@@ -55,7 +55,8 @@ interface PhonePreviewProps {
       | "matching"
       | "slider"
       | "bgm"
-      | "timer",
+      | "timer"
+      | "video",
     dropPosition: { x: number; y: number },
     shapeVariant?: string,
   ) => void;
@@ -1287,7 +1288,8 @@ export default function PhonePreview({
         componentType === "matching" ||
         componentType === "slider" ||
         componentType === "bgm" ||
-        componentType === "timer"
+        componentType === "timer" ||
+        componentType === "video"
       ) {
         event.preventDefault();
         event.stopPropagation();

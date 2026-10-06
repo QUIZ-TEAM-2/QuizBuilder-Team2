@@ -210,7 +210,8 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
         | "matching"
         | "slider"
         | "bgm"
-        | "timer",
+        | "timer"
+        | "video",
       dropPosition: { x: number; y: number },
       shapeVariant?: string,
     ) => {
@@ -275,6 +276,11 @@ export function usePageEditor<TEntity extends PageEntity | ResultEntity>({
           props.thumbColor = "#111827";
           props.textColor = "#FFFFFF";
           props.showValue = true;
+        } else if (componentType === "video") {
+          width = 84;
+          height = 22;
+          props.url = "";
+          props.rounded = true;
         } else if (componentType === "timer") {
           width = 26;
           height = 10;

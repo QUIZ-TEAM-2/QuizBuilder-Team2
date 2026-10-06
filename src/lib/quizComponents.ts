@@ -11,6 +11,7 @@ import MatchingManifest from "../components/quiz/components/Matching";
 import SliderManifest from "../components/quiz/components/Slider";
 import BGMManifest from "../components/quiz/components/BGM";
 import TimerManifest from "../components/quiz/components/Timer";
+import VideoManifest from "../components/quiz/components/Video";
 
 // ==========================================
 // COMPONENT MANIFEST TYPES
@@ -94,6 +95,7 @@ const manifests: ComponentManifest[] = [
   SliderManifest as ComponentManifest,
   BGMManifest as ComponentManifest,
   TimerManifest as ComponentManifest,
+  VideoManifest as ComponentManifest,
 ];
 
 export const componentManifests = manifests;
@@ -106,7 +108,8 @@ export function canComponentBecomeButton(component: Component): boolean {
     component.type !== "slider" &&
     component.type !== "matching" &&
     component.type !== "bgm" &&
-    component.type !== "timer"
+    component.type !== "timer" &&
+    component.type !== "video"
   );
 }
 

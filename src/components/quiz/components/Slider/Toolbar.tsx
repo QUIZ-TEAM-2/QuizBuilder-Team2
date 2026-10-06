@@ -1,13 +1,17 @@
 "use client";
 
+import { SlidersHorizontal, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ComponentToolbarProps } from "@/lib/quizComponents";
 import {
   DEFAULT_SLIDER_RANGE_COLOR,
+  DEFAULT_SLIDER_STAR_COLOR,
   DEFAULT_SLIDER_TEXT_COLOR,
   DEFAULT_SLIDER_TRACK_COLOR,
   normalizeSliderConfig,
+  normalizeSliderVariant,
   type SliderComponent,
 } from "./types";
 
@@ -35,6 +39,22 @@ export function SliderToolbar({
       ? props.textColor
       : DEFAULT_SLIDER_TEXT_COLOR;
   const showValue = props.showValue !== false;
+  const variant = normalizeSliderVariant(props.variant);
+  const starColor =
+    typeof props.starColor === "string"
+      ? props.starColor
+      : DEFAULT_SLIDER_STAR_COLOR;
+  const colorControls =
+    variant === "stars"
+      ? ([
+          ["Stars", "starColor", starColor],
+          ["Text", "textColor", textColor],
+        ] as const)
+      : ([
+          ["Track", "trackColor", trackColor],
+          ["Fill", "rangeColor", rangeColor],
+          ["Text", "textColor", textColor],
+        ] as const);
 
   const updateNumber = (key: string, value: string) => {
     const numeric = Number(value);
@@ -48,6 +68,29 @@ export function SliderToolbar({
 
   return (
     <>
+      <div className="flex items-center gap-1" title="Show as a slider or a star rating">
+        <Button
+          variant={variant === "slider" ? "default" : "outline"}
+          size="sm"
+          className="gap-1"
+          onClick={() => onUpdateProps({ variant: "slider" })}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Slider
+        </Button>
+        <Button
+          variant={variant === "stars" ? "default" : "outline"}
+          size="sm"
+          className="gap-1"
+          onClick={() => onUpdateProps({ variant: "stars" })}
+        >
+          <Star className="h-4 w-4" />
+          Stars
+        </Button>
+      </div>
+
+      <div className="h-8 w-px self-stretch bg-gray-200" />
+
       <div className="grid min-w-[320px] grid-cols-3 gap-2">
         <div>
           <Label className="text-xs">Min</Label>
@@ -103,13 +146,7 @@ export function SliderToolbar({
       <div className="h-8 w-px self-stretch bg-gray-200" />
 
       <div className="flex items-center gap-2">
-        {(
-          [
-            ["Track", "trackColor", trackColor],
-            ["Fill", "rangeColor", rangeColor],
-            ["Text", "textColor", textColor],
-          ] as const
-        ).map(([label, key, value]) => (
+        {colorControls.map(([label, key, value]) => (
           <label
             key={key}
             className="flex flex-col items-center gap-1 text-[10px] text-gray-500"
