@@ -14,6 +14,7 @@
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
     "start": "next start",
+    "test": "npm run test:question-type && npm run test:rules",
     "test:question-type": "tsx --test tests/question-type-guard*.test.ts",
     "test:rules": "tsx --test tests/preview-public-access-rules.test.ts",
     "typecheck": "tsc --noEmit",
