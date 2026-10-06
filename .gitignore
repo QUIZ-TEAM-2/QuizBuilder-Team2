@@ -43,7 +43,6 @@ yarn-error.log*
 *.tsbuildinfo
 
 # convex generated files
-convex/_generated/
 
 # idea files
 .idea
