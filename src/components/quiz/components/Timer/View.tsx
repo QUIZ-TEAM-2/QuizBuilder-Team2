@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_TIMER_PROPS,
@@ -18,6 +18,8 @@ export interface TimerViewProps {
   showBackground?: boolean;
   /** True in the editor: the timer shows its starting value and does not run. */
   isEditable?: boolean;
+  /** Called once when the countdown reaches 0:00 during play. */
+  onExpire?: () => void;
 }
 
 export function TimerView({
@@ -28,16 +30,28 @@ export function TimerView({
   backgroundColor = DEFAULT_TIMER_PROPS.backgroundColor,
   showBackground = DEFAULT_TIMER_PROPS.showBackground,
   isEditable = false,
+  onExpire,
 }: TimerViewProps) {
   const totalSeconds = normalizeTimerDuration(duration);
   const warningThreshold = normalizeTimerWarningAt(warningAt, totalSeconds);
   const [remaining, setRemaining] = useState(totalSeconds);
+  const hasExpiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   // Restart whenever the configured duration changes, or when switching
   // between the editor and the player.
   useEffect(() => {
     setRemaining(totalSeconds);
+    hasExpiredRef.current = false;
   }, [totalSeconds, isEditable]);
+
+  // Fire onExpire exactly once when the countdown hits zero.
+  useEffect(() => {
+    if (isEditable || remaining > 0 || hasExpiredRef.current) return;
+    hasExpiredRef.current = true;
+    onExpireRef.current?.();
+  }, [isEditable, remaining]);
 
   useEffect(() => {
     if (isEditable) return;

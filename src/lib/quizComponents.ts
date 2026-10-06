@@ -45,6 +45,8 @@ export interface ComponentRenderHelpers {
   bgmMuted?: boolean;
   bgmBlocked?: boolean;
   onBGMToggleMute?: () => void;
+  /** Play mode only: called by a timer with auto advance when it reaches 0:00. */
+  onTimerExpire?: () => void;
 }
 
 export interface ComponentRenderParams<

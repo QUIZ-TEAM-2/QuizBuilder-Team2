@@ -15,6 +15,8 @@ export interface TimerProps extends Record<string, unknown> {
   warningColor?: string;
   backgroundColor?: string;
   showBackground?: boolean;
+  /** Move to the next page automatically when the timer reaches 0:00. */
+  autoAdvance?: boolean;
 }
 
 export const DEFAULT_TIMER_PROPS: Required<TimerProps> = {
@@ -24,6 +26,7 @@ export const DEFAULT_TIMER_PROPS: Required<TimerProps> = {
   warningColor: "#f87171",
   backgroundColor: "#020617",
   showBackground: true,
+  autoAdvance: false,
 };
 
 export const MIN_TIMER_DURATION = 5;

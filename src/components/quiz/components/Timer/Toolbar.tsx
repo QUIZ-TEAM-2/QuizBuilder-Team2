@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Square, SquareDashed } from "lucide-react";
+import { SkipForward, Square, SquareDashed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +90,10 @@ export function TimerToolbar({
     typeof props.showBackground === "boolean"
       ? props.showBackground
       : DEFAULT_TIMER_PROPS.showBackground;
+  const autoAdvance =
+    typeof props.autoAdvance === "boolean"
+      ? props.autoAdvance
+      : DEFAULT_TIMER_PROPS.autoAdvance;
 
   return (
     <>
@@ -162,6 +166,16 @@ export function TimerToolbar({
           <SquareDashed className="h-4 w-4" />
         )}
         {showBackground ? "Filled" : "Transparent"}
+      </Button>
+      <Button
+        variant={autoAdvance ? "default" : "outline"}
+        size="sm"
+        onClick={() => onUpdateProps({ autoAdvance: !autoAdvance })}
+        className="gap-1"
+        title="Go to the next page automatically when the timer reaches 0:00"
+      >
+        <SkipForward className="h-4 w-4" />
+        {autoAdvance ? "Auto next: on" : "Auto next: off"}
       </Button>
     </>
   );

@@ -665,6 +665,12 @@ function PreviewComponentWrapper({
           bgmMuted={bgmMuted}
           bgmBlocked={bgmBlocked}
           onBGMToggleMute={onBGMToggleMute}
+          onTimerExpire={
+            !isEditable && onComponentAction
+              ? () =>
+                  onComponentAction("nextPage", { source: "timer" }, component)
+              : undefined
+          }
         />
         {isSelected && !isEditable && (
           <div className="pointer-events-none absolute right-1 top-1 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white">

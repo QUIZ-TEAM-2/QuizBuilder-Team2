@@ -56,6 +56,9 @@ function renderTimerComponent({
           : DEFAULT_TIMER_PROPS.showBackground
       }
       isEditable={helpers.isEditable}
+      onExpire={
+        props.autoAdvance === true ? helpers.onTimerExpire : undefined
+      }
     />
   );
 }
