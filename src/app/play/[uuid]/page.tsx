@@ -1172,6 +1172,16 @@ export default function PlayQuizPage() {
           } else if (!quizCompleted) {
             if (questionMode === "multiple") {
               if (selectedAnswers.length === 0) {
+                // Time ran out with nothing selected: skip the question.
+                if (actionProps?.source === "timer") {
+                  const isLastPage = currentPageIndex >= pages.length - 1;
+                  if (isLastPage) {
+                    await handleFinishQuiz();
+                  } else {
+                    await handleGoToPage(currentPageIndex + 1);
+                  }
+                  break;
+                }
                 toast.error("Select at least one answer before continuing");
                 break;
               }

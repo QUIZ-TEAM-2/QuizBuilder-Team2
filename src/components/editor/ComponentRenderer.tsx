@@ -31,6 +31,7 @@ export interface ComponentRendererProps {
   bgmMuted?: boolean;
   bgmBlocked?: boolean;
   onBGMToggleMute?: () => void;
+  onTimerExpire?: () => void;
 }
 
 export function ComponentRenderer({
@@ -51,6 +52,7 @@ export function ComponentRenderer({
   bgmMuted,
   bgmBlocked,
   onBGMToggleMute,
+  onTimerExpire,
 }: ComponentRendererProps) {
   const manifest = getManifestByType(component.type);
 
@@ -75,6 +77,7 @@ export function ComponentRenderer({
     bgmMuted,
     bgmBlocked,
     onBGMToggleMute,
+    onTimerExpire,
   };
 
   return manifest.render({
