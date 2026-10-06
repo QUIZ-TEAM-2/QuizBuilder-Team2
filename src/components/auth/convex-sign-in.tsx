@@ -137,6 +137,7 @@ export default function ConvexSignIn() {
   const { signIn } = useAuthActions();
   const { isAuthenticated } = useConvexAuth();
   const user = useQuery(api.auth.currentUser);
+  const emailVerificationEnabled = useQuery(api.auth.isEmailVerificationEnabled);
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -614,7 +615,9 @@ export default function ConvexSignIn() {
                       ? "Please wait..."
                       : mode === "signIn"
                         ? "Sign in with email"
-                        : "Send code & create account"}
+                        : emailVerificationEnabled
+                          ? "Send code & create account"
+                          : "Create account"}
                   </Button>
                 </>
               )}

@@ -110,7 +110,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ### Optional: Google sign-in and email codes
 
 - **Google sign-in:** set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` on your Convex dev deployment, and make sure its `https://<deployment>.convex.site/api/auth/callback/google` URL is listed in the Google Cloud OAuth client.
-- **Email OTP (SendGrid):** password sign-up sends a verification code through SendGrid. Set `AUTH_SENDGRID_API_KEY` (Mail Send permission) and `AUTH_SENDGRID_FROM` (a verified sender, e.g. `Display Name <verified@example.com>`) on the Convex deployment you are using.
+- **Email verification codes (SendGrid):** optional. If `AUTH_SENDGRID_API_KEY` (Mail Send permission) and `AUTH_SENDGRID_FROM` (a verified sender, e.g. `Display Name <verified@example.com>`) are set on a Convex deployment, password sign-up there requires an 8-digit code sent by email. If they are not set, sign-up works without a code.
 
 ### Generated Convex code
 
@@ -155,12 +155,12 @@ Deployment is automatic; there is nothing to run by hand.
 
 ### Configuration
 
-| Where                            | Variable                                                                                                                                               | Scope                   |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| Vercel                           | `CONVEX_DEPLOY_KEY` (production deploy key)                                                                                                            | Production only         |
-| Vercel                           | `CONVEX_DEPLOY_KEY` (preview deploy key)                                                                                                               | Preview only            |
-| Convex project, default env vars | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`                                                                                                                  | Development and Preview |
-| Convex production deployment     | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SENDGRID_API_KEY`, `AUTH_SENDGRID_FROM`, `ADMIN_BOOTSTRAP_SECRET` | Production              |
+| Where                            | Variable                                                                                                                                                                                                 | Scope                   |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Vercel                           | `CONVEX_DEPLOY_KEY` (production deploy key)                                                                                                                                                              | Production only         |
+| Vercel                           | `CONVEX_DEPLOY_KEY` (preview deploy key)                                                                                                                                                                 | Preview only            |
+| Convex project, default env vars | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`                                                                                                                                                                    | Development and Preview |
+| Convex production deployment     | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_BOOTSTRAP_SECRET`; optionally `AUTH_SENDGRID_API_KEY` and `AUTH_SENDGRID_FROM` to require email verification codes | Production              |
 
 Never use the production deploy key for Preview builds: Convex refuses it on purpose so a pull request can't overwrite the live backend.
 

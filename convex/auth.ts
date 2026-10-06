@@ -244,10 +244,27 @@ async function uniqueUserWithVerifiedPhone(ctx: MutationCtx, phone: string) {
   return users.length === 1 ? users[0]! : null;
 }
 
+/**
+ * Email verification codes are only required when SendGrid is configured on
+ * this deployment. Without AUTH_SENDGRID_API_KEY and AUTH_SENDGRID_FROM the
+ * code could never be sent, so sign-up would always fail. Setting both
+ * variables on a deployment turns verification back on there automatically.
+ */
+const isSendGridConfigured = Boolean(
+  process.env.AUTH_SENDGRID_API_KEY?.trim() &&
+    process.env.AUTH_SENDGRID_FROM?.trim(),
+);
+
+/** Lets the sign-up form say whether it will email a verification code. */
+export const isEmailVerificationEnabled = query({
+  args: {},
+  handler: async () => isSendGridConfigured,
+});
+
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Password({
-      verify: SendGridOtp,
+      ...(isSendGridConfigured ? { verify: SendGridOtp } : {}),
       profile: ((params: Record<string, unknown>) => {
         const email = normalizeEmail(params.email as string | undefined) ?? "";
         const flow = params.flow as string | undefined;
