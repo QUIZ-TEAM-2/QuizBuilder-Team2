@@ -254,7 +254,7 @@ export const createQuizFromDraft = internalMutation({
       const resultId = await ctx.db.insert("results", {
         quizId,
         pageName: draft.results[i]!.name,
-        background: { color: "#0f172a" },
+        background: { color: draft.backgroundColor },
         userId,
       });
       resultIds.push(resultId);
@@ -269,7 +269,7 @@ export const createQuizFromDraft = internalMutation({
     const onboardingPageId = await ctx.db.insert("pages", {
       quizId,
       pageName: "Onboarding",
-      background: { color: "#0f172a" },
+      background: { color: draft.backgroundColor },
       userId,
       pageType: "onboarding",
     });
@@ -285,7 +285,7 @@ export const createQuizFromDraft = internalMutation({
       const pageId = await ctx.db.insert("pages", {
         quizId,
         pageName: `Question ${i + 1}`,
-        background: { color: "#1e293b" },
+        background: { color: draft.backgroundColor },
         userId,
         questionMode: "single",
       });

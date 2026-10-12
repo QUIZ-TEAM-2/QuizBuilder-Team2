@@ -10,6 +10,8 @@ export interface ShapeViewProps {
   strokeColor?: string | null; // null or "transparent" for no border
   strokeWidth?: number;
   opacity?: number;
+  /** Rectangles only: rounded corner radius in px. */
+  cornerRadius?: number;
 }
 
 // SVG paths for each shape variant
@@ -34,6 +36,7 @@ export function ShapeView({
   strokeColor = DEFAULT_SHAPE_PROPS.strokeColor,
   strokeWidth = DEFAULT_SHAPE_PROPS.strokeWidth,
   opacity = DEFAULT_SHAPE_PROPS.opacity,
+  cornerRadius = 0,
 }: ShapeViewProps) {
   const opacityValue = (opacity ?? 100) / 100;
 
@@ -41,6 +44,26 @@ export function ShapeView({
   const effectiveFill = fillColor === null || fillColor === TRANSPARENT_COLOR ? "none" : fillColor;
   const effectiveStroke = strokeColor === null || strokeColor === TRANSPARENT_COLOR ? "none" : strokeColor;
   const effectiveStrokeWidth = effectiveStroke === "none" ? 0 : strokeWidth;
+
+  // Rounded rectangles are drawn with CSS so the corners stay round at any
+  // size (the SVG below stretches to fit, which would distort them). They fill
+  // the whole box, unlike the inset SVG rectangle.
+  if (variant === "rectangle" && cornerRadius > 0) {
+    return (
+      <div
+        className="h-full w-full"
+        style={{
+          backgroundColor: effectiveFill === "none" ? "transparent" : effectiveFill,
+          border:
+            effectiveStroke === "none"
+              ? undefined
+              : `${effectiveStrokeWidth}px solid ${effectiveStroke}`,
+          borderRadius: `${cornerRadius}px`,
+          opacity: opacityValue,
+        }}
+      />
+    );
+  }
 
   return (
     <div className="relative h-full w-full">
