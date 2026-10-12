@@ -3,6 +3,12 @@ import { describe, it } from "node:test";
 import {
   AI_QUIZ_LIMITS,
   DEFAULT_ACCENT_COLOR,
+  DEFAULT_BACKGROUND_COLOR,
+  DEFAULT_QUIZ_EMOJI,
+  DEFAULT_RESULT_EMOJI,
+  contrastRatio,
+  resolveTheme,
+  textOnAccent,
   buildOnboardingLayout,
   buildQuestionLayout,
   buildResultLayout,
@@ -15,11 +21,13 @@ const counts = { questions: 3, results: 3, answers: 3 };
 const sample = {
   title: "Which coffee are you?",
   description: "Find your brew.",
-  accentColor: "#8b5cf6",
+  accentColor: "#f59e0b",
+  backgroundColor: "#1c1917",
+  emoji: "☕",
   results: [
-    { name: "Flat White", description: "You're smooth." },
-    { name: "Long Black", description: "You're bold." },
-    { name: "Chai Latte", description: "You're cosy." },
+    { name: "Flat White", description: "You're smooth.", emoji: "🥛" },
+    { name: "Long Black", description: "You're bold.", emoji: "☕" },
+    { name: "Chai Latte", description: "You're cosy.", emoji: "not an emoji" },
   ],
   questions: [
     {
@@ -64,7 +72,11 @@ void describe("parseAiQuizDraft", () => {
     const draft = parseAiQuizDraft(sample, counts);
     assert.equal(draft.results.length, 3);
     assert.equal(draft.questions.length, 3);
-    assert.equal(draft.accentColor, "#8b5cf6");
+    assert.equal(draft.accentColor, "#f59e0b");
+    assert.equal(draft.backgroundColor, "#1c1917");
+    assert.equal(draft.emoji, "☕");
+    assert.equal(draft.results[0]!.emoji, "🥛");
+    assert.equal(draft.results[2]!.emoji, DEFAULT_RESULT_EMOJI);
     assert.equal(draft.questions[0]!.answers[0]!.alsoResult, 2);
     assert.equal(draft.questions[0]!.answers[2]!.alsoResult, -1);
   });
@@ -74,6 +86,8 @@ void describe("parseAiQuizDraft", () => {
       {
         ...sample,
         accentColor: "purple",
+        backgroundColor: "#ffffff",
+        emoji: 42,
         questions: [
           {
             question: "Q",
@@ -87,6 +101,8 @@ void describe("parseAiQuizDraft", () => {
       counts,
     );
     assert.equal(draft.accentColor, DEFAULT_ACCENT_COLOR);
+    assert.equal(draft.backgroundColor, DEFAULT_BACKGROUND_COLOR);
+    assert.equal(draft.emoji, DEFAULT_QUIZ_EMOJI);
     for (const answer of draft.questions[0]!.answers) {
       assert.ok(answer.result >= 0 && answer.result < 3);
       assert.notEqual(answer.alsoResult, answer.result);
@@ -138,11 +154,25 @@ void describe("layouts", () => {
     ...buildResultLayout(draft, 0),
   ];
 
-  void it("keeps every component inside the phone frame", () => {
-    for (const spec of all) {
+  void it("keeps content inside the phone frame and centred", () => {
+    for (const spec of all.filter((item) => !item.decorative)) {
       const { x, y, width, height } = spec.position;
-      assert.ok(x >= 0 && y >= 0 && x + width <= 100 && y + height <= 100);
+      const left = 50 + x - width / 2;
+      assert.ok(left >= 0 && left + width <= 100, `${spec.data} off screen`);
+      assert.ok(y >= 0 && y + height <= 100, `${spec.data} off screen`);
+      assert.equal(x, 0, `${spec.data} should be centred`);
     }
+  });
+
+  void it("keeps answer text narrower than its card", () => {
+    const layout = buildQuestionLayout(draft, 0);
+    const cards = layout.filter(
+      (spec) => spec.type === "shape" && !spec.decorative,
+    );
+    const labels = layout.filter((spec) => spec.action === "answerBox");
+    labels.forEach((label, index) => {
+      assert.ok(label.position.width < cards[index]!.position.width);
+    });
   });
 
   void it("scores answer buttons with 2 points, plus 1 for a second result", () => {
@@ -161,5 +191,31 @@ void describe("layouts", () => {
     assert.ok(
       buildOnboardingLayout(draft).some((spec) => spec.action === "startQuiz"),
     );
+  });
+});
+
+void describe("theme", () => {
+  void it("keeps readable themes and rejects light backgrounds", () => {
+    assert.deepEqual(resolveTheme("#14532d", "#facc15"), {
+      backgroundColor: "#14532d",
+      accentColor: "#facc15",
+    });
+    assert.equal(
+      resolveTheme("#fef3c7", "#facc15").backgroundColor,
+      DEFAULT_BACKGROUND_COLOR,
+    );
+  });
+
+  void it("rejects an accent that disappears into the background", () => {
+    assert.equal(
+      resolveTheme("#0f172a", "#111827").accentColor,
+      DEFAULT_ACCENT_COLOR,
+    );
+  });
+
+  void it("picks readable text for buttons", () => {
+    for (const accent of ["#facc15", "#10b981", "#7c3aed", "#ef4444"]) {
+      assert.ok(contrastRatio(accent, textOnAccent(accent)) >= 3, accent);
+    }
   });
 });

@@ -31,6 +31,8 @@ export function ShapeToolbar({ component, onUpdateProps }: ShapeToolbarProps) {
   const strokeColor = props.strokeColor as string | null | undefined;
   const strokeWidth = (props.strokeWidth as number) ?? DEFAULT_SHAPE_PROPS.strokeWidth;
   const opacity = (props.opacity as number) ?? DEFAULT_SHAPE_PROPS.opacity;
+  const cornerRadius =
+    typeof props.cornerRadius === "number" ? props.cornerRadius : 0;
 
   // Check if colors are transparent/none
   const isFillTransparent = fillColor === null || fillColor === TRANSPARENT_COLOR;
@@ -197,6 +199,25 @@ export function ShapeToolbar({ component, onUpdateProps }: ShapeToolbarProps) {
           className="w-24"
         />
       </div>
+
+      {variant === "rectangle" ? (
+        <>
+          <div className="h-6 w-px bg-gray-200" />
+          <div className="flex items-center gap-2">
+            <Label className="text-xs whitespace-nowrap">
+              Corners: {cornerRadius}px
+            </Label>
+            <Slider
+              value={[cornerRadius]}
+              onValueChange={([value]) => onUpdateProps({ cornerRadius: value })}
+              min={0}
+              max={48}
+              step={2}
+              className="w-24"
+            />
+          </div>
+        </>
+      ) : null}
     </>
   );
 }

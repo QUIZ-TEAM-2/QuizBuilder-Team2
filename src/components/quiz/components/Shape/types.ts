@@ -14,6 +14,8 @@ export interface ShapeProps {
   strokeWidth?: number;
   opacity?: number;
   rotation?: number;
+  /** Rectangles only: rounded corner radius in px. 0 keeps the classic look. */
+  cornerRadius?: number;
   [key: string]: unknown;
 }
 

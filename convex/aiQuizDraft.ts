@@ -12,6 +12,9 @@ export const AI_QUIZ_LIMITS = {
 } as const;
 
 export const DEFAULT_ACCENT_COLOR = "#10b981";
+export const DEFAULT_BACKGROUND_COLOR = "#0f172a";
+export const DEFAULT_QUIZ_EMOJI = "✨";
+export const DEFAULT_RESULT_EMOJI = "🌟";
 const PRIMARY_POINTS = 2;
 const SECONDARY_POINTS = 1;
 
@@ -33,7 +36,9 @@ export type AiQuizDraft = {
   title: string;
   description: string;
   accentColor: string;
-  results: Array<{ name: string; description: string }>;
+  backgroundColor: string;
+  emoji: string;
+  results: Array<{ name: string; description: string; emoji: string }>;
   questions: Array<{ question: string; answers: AiQuizAnswer[] }>;
 };
 
@@ -68,7 +73,8 @@ export function buildPrompt(topic: string, counts: AiQuizCounts): string {
     `- For every answer, "result" is the 0-based index of the result it most points to. "alsoResult" is the index of a second result it slightly points to, or -1 if none.`,
     "- Spread answers across all results so every result is reachable and none dominates.",
     "- Title: max 8 words. Description: one inviting sentence (max 25 words).",
-    "- accentColor: a hex colour like #10b981 that suits the theme and reads well with white text on a dark background.",
+    "- Theme: backgroundColor is a dark hex colour that suits the topic (e.g. deep navy, forest green, plum, charcoal), and accentColor is a bright hex colour that pops against it.",
+    "- emoji: one emoji that represents the quiz. Each result also gets one emoji that fits it.",
     "- Keep it friendly and suitable for all ages. Use Australian English spelling.",
   ].join("\n");
 }
@@ -81,6 +87,8 @@ export function buildResponseSchema() {
       title: { type: "STRING" },
       description: { type: "STRING" },
       accentColor: { type: "STRING" },
+      backgroundColor: { type: "STRING" },
+      emoji: { type: "STRING" },
       results: {
         type: "ARRAY",
         items: {
@@ -88,8 +96,9 @@ export function buildResponseSchema() {
           properties: {
             name: { type: "STRING" },
             description: { type: "STRING" },
+            emoji: { type: "STRING" },
           },
-          required: ["name", "description"],
+          required: ["name", "description", "emoji"],
         },
       },
       questions: {
@@ -115,7 +124,15 @@ export function buildResponseSchema() {
         },
       },
     },
-    required: ["title", "description", "accentColor", "results", "questions"],
+    required: [
+      "title",
+      "description",
+      "accentColor",
+      "backgroundColor",
+      "emoji",
+      "results",
+      "questions",
+    ],
   };
 }
 
@@ -127,10 +144,100 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 const cleanText = (value: unknown, maxLength: number): string => {
   if (typeof value !== "string") return "";
   const text = value.replace(/\s+/g, " ").trim();
-  return text.length > maxLength
-    ? `${text.slice(0, maxLength - 1).trimEnd()}…`
-    : text;
+  if (text.length <= maxLength) return text;
+  // Cut at a word boundary so we never end mid-word.
+  const cut = text.slice(0, maxLength - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 };
+
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/u;
+
+/** Keeps a short emoji from the model, or falls back. */
+function cleanEmoji(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 &&
+    trimmed.length <= 16 &&
+    EMOJI_PATTERN.test(trimmed)
+    ? trimmed
+    : fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Colour helpers
+// ---------------------------------------------------------------------------
+
+const HEX_PATTERN = /^#[0-9a-f]{6}$/i;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b]
+    .map((c) =>
+      Math.round(Math.min(255, Math.max(0, c)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+/** Blends `a` towards `b` by `amount` (0 to 1). */
+export function mixColors(a: string, b: string, amount: number): string {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  return rgbToHex([
+    ca[0] + (cb[0] - ca[0]) * amount,
+    ca[1] + (cb[1] - ca[1]) * amount,
+    ca[2] + (cb[2] - ca[2]) * amount,
+  ]);
+}
+
+/** WCAG relative luminance (0 = black, 1 = white). */
+export function luminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex).map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/**
+ * The pages always use white text, so the background must be dark and the
+ * accent must stand out against it. Anything that fails falls back to the
+ * defaults rather than producing an unreadable quiz.
+ */
+export function resolveTheme(
+  backgroundValue: unknown,
+  accentValue: unknown,
+): { backgroundColor: string; accentColor: string } {
+  const bg = typeof backgroundValue === "string" ? backgroundValue.trim() : "";
+  const backgroundColor =
+    HEX_PATTERN.test(bg) && contrastRatio(bg, "#ffffff") >= 7
+      ? bg.toLowerCase()
+      : DEFAULT_BACKGROUND_COLOR;
+  const ac = typeof accentValue === "string" ? accentValue.trim() : "";
+  const accentColor =
+    HEX_PATTERN.test(ac) && contrastRatio(ac, backgroundColor) >= 3
+      ? ac.toLowerCase()
+      : DEFAULT_ACCENT_COLOR;
+  return { backgroundColor, accentColor };
+}
+
+/** Dark or white text, whichever reads better on the accent colour. */
+export const textOnAccent = (accent: string) =>
+  contrastRatio(accent, "#0f172a") > contrastRatio(accent, "#ffffff")
+    ? "#0f172a"
+    : "#ffffff";
 
 /**
  * Validates and tidies the model's JSON. Throws an Error with a user-facing
@@ -149,6 +256,7 @@ export function parseAiQuizDraft(
       return {
         name: cleanText(record?.name, 40),
         description: cleanText(record?.description, 220),
+        emoji: cleanEmoji(record?.emoji, DEFAULT_RESULT_EMOJI),
       };
     })
     .filter((result) => result.name !== "")
@@ -178,7 +286,7 @@ export function parseAiQuizDraft(
             (questionIndex + answerIndex) % resultCount;
           const also = validIndex(answer?.alsoResult);
           return {
-            text: cleanText(answer?.text, 60),
+            text: cleanText(answer?.text, 64),
             result,
             alsoResult: also !== null && also !== result ? also : -1,
           };
@@ -214,31 +322,53 @@ export function parseAiQuizDraft(
     used.add(r);
   }
 
-  const accent =
-    typeof root.accentColor === "string" ? root.accentColor.trim() : "";
+  const theme = resolveTheme(root.backgroundColor, root.accentColor);
 
   return {
     title: cleanText(root.title, 80) || "AI generated quiz",
     description: cleanText(root.description, 200),
-    accentColor: /^#[0-9a-f]{6}$/i.test(accent) ? accent : DEFAULT_ACCENT_COLOR,
+    accentColor: theme.accentColor,
+    backgroundColor: theme.backgroundColor,
+    emoji: cleanEmoji(root.emoji, DEFAULT_QUIZ_EMOJI),
     results,
     questions,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Layout: positions are percentages of the phone frame.
+// Layout. Positions are percentages of the phone frame (390 x 844). `x` is the
+// horizontal offset of the component's CENTRE from the middle of the screen,
+// so x = 0 is centred. `y` is the top edge.
 // ---------------------------------------------------------------------------
 
+/** Phone width / height: converts a width % into the matching height %. */
+const PHONE_ASPECT = 390 / 844;
+
 export type ComponentSpec = {
-  type: "text" | "shape";
+  type: "text" | "shape" | "progressBar";
   data?: string;
   props: Record<string, unknown>;
   position: { x: number; y: number; width: number; height: number };
   action?: "answerBox" | "startQuiz";
   /** For answer buttons: result indexes and points, resolved to IDs later. */
   scores?: Array<{ resultIndex: number; points: number }>;
+  /** Background decoration that may sit partly off-screen. Not saved. */
+  decorative?: boolean;
 };
+
+type Theme = {
+  accent: string;
+  surface: string;
+  muted: string;
+  onAccent: string;
+};
+
+const themeOf = (draft: AiQuizDraft): Theme => ({
+  accent: draft.accentColor,
+  surface: mixColors(draft.backgroundColor, draft.accentColor, 0.16),
+  muted: mixColors("#ffffff", draft.backgroundColor, 0.22),
+  onAccent: textOnAccent(draft.accentColor),
+});
 
 const text = (
   data: string,
@@ -251,50 +381,88 @@ const text = (
   props: { align: "center", color: "#FFFFFF", ...props },
 });
 
-const button = (
-  label: string,
+const roundedBox = (
   position: ComponentSpec["position"],
-  accentColor: string,
-  action: NonNullable<ComponentSpec["action"]>,
-  scores?: ComponentSpec["scores"],
-): ComponentSpec[] => [
-  {
-    type: "shape",
-    position,
-    props: {
-      variant: "rectangle",
-      fillColor: accentColor,
-      strokeColor: null,
-      strokeWidth: 0,
-      opacity: 100,
-      rotation: 0,
-    },
+  fillColor: string,
+  options: {
+    cornerRadius?: number;
+    strokeColor?: string | null;
+    strokeWidth?: number;
+  } = {},
+): ComponentSpec => ({
+  type: "shape",
+  position,
+  props: {
+    variant: "rectangle",
+    fillColor,
+    strokeColor: options.strokeColor ?? null,
+    strokeWidth: options.strokeWidth ?? 0,
+    cornerRadius: options.cornerRadius ?? 18,
+    opacity: 100,
+    rotation: 0,
   },
-  {
-    ...text(label, position, { fontSize: 16, bold: true, isButton: true }),
-    action,
-    scores,
+});
+
+/** Soft accent-coloured circle in the background. `size` is a width %. */
+const blob = (
+  accent: string,
+  centreX: number,
+  top: number,
+  size: number,
+  opacity: number,
+): ComponentSpec => ({
+  type: "shape",
+  decorative: true,
+  position: { x: centreX, y: top, width: size, height: size * PHONE_ASPECT },
+  props: {
+    variant: "circle",
+    fillColor: accent,
+    strokeColor: null,
+    strokeWidth: 0,
+    opacity,
+    rotation: 0,
   },
-];
+});
 
 export function buildOnboardingLayout(draft: AiQuizDraft): ComponentSpec[] {
+  const t = themeOf(draft);
+  const count = draft.questions.length;
+  const start = { x: 0, y: 66, width: 64, height: 7.5 };
   return [
+    blob(t.accent, 42, -12, 90, 18),
+    blob(t.accent, -45, 80, 70, 10),
+    text(draft.emoji, { x: 0, y: 17, width: 40, height: 11 }, { fontSize: 64 }),
     text(
       draft.title,
-      { x: 8, y: 22, width: 84, height: 20 },
-      { fontSize: 30, bold: true },
+      { x: 0, y: 29, width: 86, height: 13 },
+      {
+        fontSize: 30,
+        bold: true,
+      },
     ),
     text(
       draft.description,
-      { x: 10, y: 45, width: 80, height: 16 },
-      { fontSize: 16, color: "#cbd5e1" },
+      { x: 0, y: 43, width: 78, height: 10 },
+      {
+        fontSize: 16,
+        color: t.muted,
+      },
     ),
-    ...button(
-      "Start quiz",
-      { x: 20, y: 72, width: 60, height: 9 },
-      draft.accentColor,
-      "startQuiz",
+    text(
+      `${count} questions · about ${Math.max(1, Math.round(count / 4))} min`,
+      { x: 0, y: 55, width: 70, height: 4 },
+      { fontSize: 13, bold: true, color: t.accent },
     ),
+    roundedBox(start, t.accent, { cornerRadius: 28 }),
+    {
+      ...text("Start quiz", start, {
+        fontSize: 17,
+        bold: true,
+        color: t.onAccent,
+        isButton: true,
+      }),
+      action: "startQuiz",
+    },
   ];
 }
 
@@ -302,32 +470,53 @@ export function buildQuestionLayout(
   draft: AiQuizDraft,
   questionIndex: number,
 ): ComponentSpec[] {
+  const t = themeOf(draft);
   const question = draft.questions[questionIndex]!;
   const specs: ComponentSpec[] = [
-    text(
-      `Question ${questionIndex + 1} of ${draft.questions.length}`,
-      { x: 10, y: 8, width: 80, height: 5 },
-      { fontSize: 13, color: "#94a3b8" },
-    ),
+    blob(t.accent, 40, -9, 55, 12),
+    {
+      type: "progressBar",
+      position: { x: 0, y: 6, width: 70, height: 4 },
+      props: { variant: "dots", currentColor: t.accent, totalColor: "#ffffff" },
+    },
     text(
       question.question,
-      { x: 8, y: 15, width: 84, height: 20 },
-      { fontSize: 22, bold: true },
+      { x: 0, y: 13, width: 86, height: 17 },
+      {
+        fontSize: 24,
+        bold: true,
+      },
     ),
   ];
+
+  const cardHeight = 9.5;
+  const gap = 2.5;
   question.answers.forEach((answer, index) => {
     const scores = [{ resultIndex: answer.result, points: PRIMARY_POINTS }];
     if (answer.alsoResult >= 0) {
       scores.push({ resultIndex: answer.alsoResult, points: SECONDARY_POINTS });
     }
+    const y = 35 + index * (cardHeight + gap);
     specs.push(
-      ...button(
-        answer.text,
-        { x: 8, y: 40 + index * 12.5, width: 84, height: 10 },
-        draft.accentColor,
-        "answerBox",
+      roundedBox({ x: 0, y, width: 88, height: cardHeight }, t.surface, {
+        cornerRadius: 18,
+        strokeColor: t.accent,
+        strokeWidth: 2,
+      }),
+      {
+        // Narrower than its card so long answers wrap inside the padding.
+        ...text(
+          answer.text,
+          { x: 0, y, width: 78, height: cardHeight },
+          {
+            fontSize: 15,
+            bold: true,
+            isButton: true,
+          },
+        ),
+        action: "answerBox",
         scores,
-      ),
+      },
     );
   });
   return specs;
@@ -337,22 +526,43 @@ export function buildResultLayout(
   draft: AiQuizDraft,
   resultIndex: number,
 ): ComponentSpec[] {
+  const t = themeOf(draft);
   const result = draft.results[resultIndex]!;
   return [
+    blob(t.accent, -40, -10, 85, 16),
+    blob(t.accent, 45, 82, 60, 10),
     text(
       "You got",
-      { x: 10, y: 18, width: 80, height: 5 },
-      { fontSize: 15, bold: true, color: draft.accentColor },
+      { x: 0, y: 12, width: 60, height: 4 },
+      {
+        fontSize: 15,
+        bold: true,
+        color: t.accent,
+      },
+    ),
+    text(
+      result.emoji,
+      { x: 0, y: 18, width: 40, height: 12 },
+      { fontSize: 64 },
     ),
     text(
       result.name,
-      { x: 8, y: 25, width: 84, height: 15 },
-      { fontSize: 30, bold: true },
+      { x: 0, y: 31, width: 86, height: 14 },
+      {
+        fontSize: 32,
+        bold: true,
+      },
     ),
+    roundedBox({ x: 0, y: 48, width: 88, height: 26 }, t.surface, {
+      cornerRadius: 22,
+    }),
     text(
       result.description,
-      { x: 10, y: 44, width: 80, height: 28 },
-      { fontSize: 16, color: "#cbd5e1" },
+      { x: 0, y: 49, width: 76, height: 24 },
+      {
+        fontSize: 16,
+        color: t.muted,
+      },
     ),
   ];
 }

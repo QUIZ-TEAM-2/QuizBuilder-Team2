@@ -34,6 +34,9 @@ function renderShapeComponent({
       strokeColor={props.strokeColor ?? DEFAULT_SHAPE_PROPS.strokeColor}
       strokeWidth={props.strokeWidth ?? DEFAULT_SHAPE_PROPS.strokeWidth}
       opacity={props.opacity ?? DEFAULT_SHAPE_PROPS.opacity}
+      cornerRadius={
+        typeof props.cornerRadius === "number" ? props.cornerRadius : 0
+      }
     />
   );
 }
