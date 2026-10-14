@@ -14,7 +14,7 @@
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
     "start": "next start",
-    "test": "npm run test:question-type && npm run test:rules && npm run test:video && npm run test:play && npm run test:ai && npm run test:knowledge && npm run test:share && npm run test:regen && npm run test:leaderboard",
+    "test": "npm run test:question-type && npm run test:rules && npm run test:video && npm run test:play && npm run test:ai && npm run test:knowledge && npm run test:share && npm run test:regen && npm run test:leaderboard && npm run test:cover",
     "test:knowledge": "tsx --test tests/knowledge-scoring.test.ts",
     "test:ai": "tsx --test tests/ai-quiz-draft.test.ts",
     "test:play": "tsx --test tests/play-progress.test.ts",
@@ -26,7 +26,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "test:share": "tsx --test tests/share-links.test.ts",
     "test:regen": "tsx --test tests/ai-question-regen.test.ts",
-    "test:leaderboard": "tsx --test tests/leaderboard-rules.test.ts"
+    "test:leaderboard": "tsx --test tests/leaderboard-rules.test.ts",
+    "test:cover": "tsx --test tests/cover-theme.test.ts"
   },
   "dependencies": {
     "@auth/core": "^0.37.0",

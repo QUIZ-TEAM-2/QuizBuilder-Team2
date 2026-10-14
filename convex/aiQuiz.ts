@@ -146,7 +146,14 @@ export const generateQuiz = action({
     results: v.optional(v.number()),
     answers: v.optional(v.number()),
   },
-  handler: async (ctx, args): Promise<{ quizId: Id<"quiz"> }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    quizId: Id<"quiz">;
+    /** Lets the browser draw a matching cover image. */
+    cover: { title: string; emoji: string; background: string; accent: string };
+  }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new ConvexError("Please sign in to generate a quiz.");
 
@@ -204,7 +211,15 @@ export const generateQuiz = action({
       internal.aiQuiz.createQuizFromDraft,
       { userId, draft },
     );
-    return { quizId };
+    return {
+      quizId,
+      cover: {
+        title: draft.title,
+        emoji: draft.emoji,
+        background: draft.backgroundColor,
+        accent: draft.accentColor,
+      },
+    };
   },
 });
 

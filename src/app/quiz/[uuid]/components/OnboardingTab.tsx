@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageIcon, Loader2, Plus, X } from "lucide-react";
+import { ImageIcon, Loader2, Plus, Sparkles, X } from "lucide-react";
 import EditorPreviewPanel from "./EditorPreviewPanel";
 import RenamePageDialog from "./RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
@@ -24,6 +24,8 @@ import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import { api } from "../../../../../convex/_generated/api";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import { useTemplates } from "@/hooks/useTemplates";
+import { useGenerateCover } from "@/hooks/useGenerateCover";
+import { coverTitle, pickCoverTheme } from "@/lib/coverTheme";
 import type { Component, PageEntity } from "@/types";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -281,6 +283,39 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     [basicInfo, handleSaveBasicInfo],
   );
 
+  const generateCover = useGenerateCover();
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+  const handleGenerateCover = useCallback(async () => {
+    if (isGeneratingCover) return;
+    setIsGeneratingCover(true);
+    try {
+      const theme = pickCoverTheme(
+        onboardingPage?.components,
+        onboardingPage?.background,
+      );
+      const url = await generateCover({
+        ...theme,
+        title: coverTitle(quizInfo?.title),
+        brandName: basicInfo.brandName,
+      });
+      handleCoverImageSelect(url);
+      toast.success("Cover image created");
+    } catch (error) {
+      console.error("Failed to generate cover image:", error);
+      toast.error("Couldn't create a cover image");
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  }, [
+    basicInfo.brandName,
+    generateCover,
+    handleCoverImageSelect,
+    isGeneratingCover,
+    onboardingPage?.background,
+    onboardingPage?.components,
+    quizInfo?.title,
+  ]);
+
   const handleCoverImageClear = useCallback(() => {
     const nextInfo = { ...basicInfo, coverImage: "" };
     setBasicInfo(nextInfo);
@@ -297,6 +332,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
         onClearBrandAvatar={handleBrandAvatarClear}
         onPickCoverImage={() => setIsCoverImagePickerOpen(true)}
         onClearCoverImage={handleCoverImageClear}
+        onGenerateCoverImage={() => void handleGenerateCover()}
+        isGeneratingCover={isGeneratingCover}
         isSaving={isSavingBasicInfo}
       />
     ),
@@ -304,6 +341,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       basicInfo,
       handleBrandAvatarClear,
       handleCoverImageClear,
+      handleGenerateCover,
+      isGeneratingCover,
       handleSaveBasicInfo,
       isSavingBasicInfo,
     ],
@@ -477,6 +516,8 @@ type QuizBasicInfoSidebarProps = {
   onClearBrandAvatar: () => void;
   onPickCoverImage: () => void;
   onClearCoverImage: () => void;
+  onGenerateCoverImage: () => void;
+  isGeneratingCover: boolean;
   isSaving: boolean;
 };
 
@@ -488,6 +529,8 @@ function QuizBasicInfoSidebar({
   onClearBrandAvatar,
   onPickCoverImage,
   onClearCoverImage,
+  onGenerateCoverImage,
+  isGeneratingCover,
   isSaving,
 }: QuizBasicInfoSidebarProps) {
   const [pendingTag, setPendingTag] = useState("");
@@ -809,6 +852,22 @@ function QuizBasicInfoSidebar({
             >
               <ImageIcon className="h-4 w-4" />
               Choose
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={onGenerateCoverImage}
+              disabled={isSaving || isGeneratingCover}
+              title="Make a cover from the quiz title, colours and emoji"
+            >
+              {isGeneratingCover ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Generate
             </Button>
             {value.coverImage ? (
               <Button
