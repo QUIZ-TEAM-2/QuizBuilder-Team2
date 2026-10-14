@@ -56,6 +56,7 @@ function languageLabel(language: "en" | "cn" | null): string {
   return "—";
 }
 import { getQuizStatusLabel } from "@/lib/quiz-access-rules";
+import { ThemeToggle } from "@/components/theme/DashboardTheme";
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleString();
@@ -182,6 +183,7 @@ export default function DashboardQuizzesPage() {
             <Link href="/quiz">
               <Button variant="outline">Back to editor</Button>
             </Link>
+            <ThemeToggle />
             <ConvexUserButton />
           </div>
         </div>

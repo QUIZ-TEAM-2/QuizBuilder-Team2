@@ -1,0 +1,406 @@
+/*
+ * Dark theme for the dashboard pages (quiz list, creator and admin
+ * dashboards, analytics). Those pages use fixed Tailwind colours, so in dark
+ * mode the common ones are remapped here instead of adding dark: variants to
+ * thousands of lines. The `dark` class is only on <html> while one of those
+ * pages is open (see DashboardThemeScope), and anything inside
+ * [data-theme-ignore] (quiz previews) keeps the creator's own colours.
+ */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark .bg-white:not([data-theme-ignore] *),
+html.dark .bg-white\/90:not([data-theme-ignore] *) {
+  background-color: #0f172a;
+}
+
+html.dark .bg-slate-100:not([data-theme-ignore] *) {
+  background-color: #020617;
+}
+
+html.dark .bg-slate-50:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/80:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/70:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/60:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/50:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/40:not([data-theme-ignore] *),
+html.dark .bg-slate-50\/30:not([data-theme-ignore] *) {
+  background-color: #0a1222;
+}
+
+html.dark .bg-slate-100\/90:not([data-theme-ignore] *),
+html.dark .bg-slate-800:not([data-theme-ignore] *) {
+  background-color: #1e293b;
+}
+
+html.dark .bg-slate-200:not([data-theme-ignore] *),
+html.dark .bg-slate-200\/90:not([data-theme-ignore] *) {
+  background-color: #334155;
+}
+
+html.dark .bg-slate-400:not([data-theme-ignore] *) {
+  background-color: #64748b;
+}
+
+html.dark .hover\:bg-slate-50:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-slate-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-gray-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-gray-50:not([data-theme-ignore] *):hover {
+  background-color: #1e293b;
+}
+
+html.dark .hover\:bg-slate-200:not([data-theme-ignore] *):hover {
+  background-color: #334155;
+}
+
+html.dark .bg-slate-900:not([data-theme-ignore] *) {
+  background-color: #f1f5f9;
+}
+
+html.dark .bg-slate-900.text-white:not([data-theme-ignore] *),
+html.dark .bg-slate-900 .text-white:not([data-theme-ignore] *) {
+  color: #0f172a;
+}
+
+html.dark .bg-slate-900.hover\:bg-slate-800:not([data-theme-ignore] *):hover {
+  background-color: #cbd5e1;
+}
+
+html.dark .text-slate-950:not([data-theme-ignore] *) {
+  color: #f8fafc;
+}
+
+html.dark .text-slate-900:not([data-theme-ignore] *) {
+  color: #f1f5f9;
+}
+
+html.dark .text-slate-800:not([data-theme-ignore] *) {
+  color: #e2e8f0;
+}
+
+html.dark .text-slate-700:not([data-theme-ignore] *) {
+  color: #cbd5e1;
+}
+
+html.dark .text-slate-600:not([data-theme-ignore] *) {
+  color: #a3b1c6;
+}
+
+html.dark .text-slate-500:not([data-theme-ignore] *) {
+  color: #94a3b8;
+}
+
+html.dark .text-gray-500:not([data-theme-ignore] *) {
+  color: #94a3b8;
+}
+
+html.dark .text-gray-600:not([data-theme-ignore] *) {
+  color: #a3b1c6;
+}
+
+html.dark .text-gray-900:not([data-theme-ignore] *) {
+  color: #f1f5f9;
+}
+
+html.dark .text-gray-700:not([data-theme-ignore] *) {
+  color: #cbd5e1;
+}
+
+html.dark .text-slate-400:not([data-theme-ignore] *) {
+  color: #7c8aa0;
+}
+
+html.dark .text-slate-300:not([data-theme-ignore] *) {
+  color: #64748b;
+}
+
+html.dark .hover\:text-slate-950:not([data-theme-ignore] *):hover {
+  color: #ffffff;
+}
+
+html.dark .hover\:text-slate-700:not([data-theme-ignore] *):hover {
+  color: #e2e8f0;
+}
+
+html.dark .border-slate-100:not([data-theme-ignore] *),
+html.dark .border-slate-100\/90:not([data-theme-ignore] *),
+html.dark .border-white:not([data-theme-ignore] *),
+html.dark .border-gray-100:not([data-theme-ignore] *) {
+  border-color: #1e293b;
+}
+
+html.dark .border-slate-200:not([data-theme-ignore] *),
+html.dark .border-slate-200\/80:not([data-theme-ignore] *),
+html.dark .border-slate-200\/90:not([data-theme-ignore] *),
+html.dark .border-gray-200:not([data-theme-ignore] *) {
+  border-color: #273449;
+}
+
+html.dark .hover\:border-slate-300:not([data-theme-ignore] *):hover {
+  border-color: #475569;
+}
+
+html.dark .border-slate-900\/15:not([data-theme-ignore] *),
+html.dark .border-slate-900\/10:not([data-theme-ignore] *),
+html.dark .border-slate-950\/10:not([data-theme-ignore] *) {
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+html.dark .ring-slate-900\/10:not([data-theme-ignore] *),
+html.dark .ring-slate-900\/5:not([data-theme-ignore] *),
+html.dark .ring-slate-200:not([data-theme-ignore] *) {
+  --tw-ring-color: rgba(148, 163, 184, 0.16);
+}
+
+html.dark .bg-emerald-50:not([data-theme-ignore] *) {
+  background-color: rgb(16 185 129 / 0.14);
+}
+
+html.dark .bg-emerald-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-emerald-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-emerald-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(16 185 129 / 0.22);
+}
+
+html.dark .text-emerald-700:not([data-theme-ignore] *),
+html.dark .text-emerald-800:not([data-theme-ignore] *),
+html.dark .text-emerald-900:not([data-theme-ignore] *),
+html.dark .hover\:text-emerald-800:not([data-theme-ignore] *):hover {
+  color: #6ee7b7;
+}
+
+html.dark .text-emerald-600:not([data-theme-ignore] *),
+html.dark .hover\:text-emerald-600:not([data-theme-ignore] *):hover {
+  color: #34d399;
+}
+
+html.dark .border-emerald-200:not([data-theme-ignore] *),
+html.dark .border-emerald-300:not([data-theme-ignore] *) {
+  border-color: rgb(16 185 129 / 0.4);
+}
+
+html.dark .bg-blue-50:not([data-theme-ignore] *) {
+  background-color: rgb(59 130 246 / 0.14);
+}
+
+html.dark .bg-blue-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-blue-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-blue-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(59 130 246 / 0.22);
+}
+
+html.dark .text-blue-700:not([data-theme-ignore] *),
+html.dark .text-blue-800:not([data-theme-ignore] *),
+html.dark .text-blue-900:not([data-theme-ignore] *),
+html.dark .hover\:text-blue-800:not([data-theme-ignore] *):hover {
+  color: #93c5fd;
+}
+
+html.dark .text-blue-600:not([data-theme-ignore] *),
+html.dark .hover\:text-blue-600:not([data-theme-ignore] *):hover {
+  color: #60a5fa;
+}
+
+html.dark .border-blue-200:not([data-theme-ignore] *),
+html.dark .border-blue-300:not([data-theme-ignore] *) {
+  border-color: rgb(59 130 246 / 0.4);
+}
+
+html.dark .bg-indigo-50:not([data-theme-ignore] *) {
+  background-color: rgb(99 102 241 / 0.14);
+}
+
+html.dark .bg-indigo-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-indigo-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-indigo-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(99 102 241 / 0.22);
+}
+
+html.dark .text-indigo-700:not([data-theme-ignore] *),
+html.dark .text-indigo-800:not([data-theme-ignore] *),
+html.dark .text-indigo-900:not([data-theme-ignore] *),
+html.dark .hover\:text-indigo-800:not([data-theme-ignore] *):hover {
+  color: #a5b4fc;
+}
+
+html.dark .text-indigo-600:not([data-theme-ignore] *),
+html.dark .hover\:text-indigo-600:not([data-theme-ignore] *):hover {
+  color: #818cf8;
+}
+
+html.dark .border-indigo-200:not([data-theme-ignore] *),
+html.dark .border-indigo-300:not([data-theme-ignore] *) {
+  border-color: rgb(99 102 241 / 0.4);
+}
+
+html.dark .bg-amber-50:not([data-theme-ignore] *) {
+  background-color: rgb(245 158 11 / 0.14);
+}
+
+html.dark .bg-amber-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-amber-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-amber-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(245 158 11 / 0.22);
+}
+
+html.dark .text-amber-700:not([data-theme-ignore] *),
+html.dark .text-amber-800:not([data-theme-ignore] *),
+html.dark .text-amber-900:not([data-theme-ignore] *),
+html.dark .hover\:text-amber-800:not([data-theme-ignore] *):hover {
+  color: #fcd34d;
+}
+
+html.dark .text-amber-600:not([data-theme-ignore] *),
+html.dark .hover\:text-amber-600:not([data-theme-ignore] *):hover {
+  color: #fbbf24;
+}
+
+html.dark .border-amber-200:not([data-theme-ignore] *),
+html.dark .border-amber-300:not([data-theme-ignore] *) {
+  border-color: rgb(245 158 11 / 0.4);
+}
+
+html.dark .bg-red-50:not([data-theme-ignore] *) {
+  background-color: rgb(239 68 68 / 0.14);
+}
+
+html.dark .bg-red-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-red-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-red-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(239 68 68 / 0.22);
+}
+
+html.dark .text-red-700:not([data-theme-ignore] *),
+html.dark .text-red-800:not([data-theme-ignore] *),
+html.dark .text-red-900:not([data-theme-ignore] *),
+html.dark .hover\:text-red-800:not([data-theme-ignore] *):hover {
+  color: #fca5a5;
+}
+
+html.dark .text-red-600:not([data-theme-ignore] *),
+html.dark .hover\:text-red-600:not([data-theme-ignore] *):hover {
+  color: #f87171;
+}
+
+html.dark .border-red-200:not([data-theme-ignore] *),
+html.dark .border-red-300:not([data-theme-ignore] *) {
+  border-color: rgb(239 68 68 / 0.4);
+}
+
+html.dark .bg-sky-50:not([data-theme-ignore] *) {
+  background-color: rgb(14 165 233 / 0.14);
+}
+
+html.dark .bg-sky-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-sky-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-sky-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(14 165 233 / 0.22);
+}
+
+html.dark .text-sky-700:not([data-theme-ignore] *),
+html.dark .text-sky-800:not([data-theme-ignore] *),
+html.dark .text-sky-900:not([data-theme-ignore] *),
+html.dark .hover\:text-sky-800:not([data-theme-ignore] *):hover {
+  color: #7dd3fc;
+}
+
+html.dark .text-sky-600:not([data-theme-ignore] *),
+html.dark .hover\:text-sky-600:not([data-theme-ignore] *):hover {
+  color: #38bdf8;
+}
+
+html.dark .border-sky-200:not([data-theme-ignore] *),
+html.dark .border-sky-300:not([data-theme-ignore] *) {
+  border-color: rgb(14 165 233 / 0.4);
+}
+
+html.dark .bg-violet-50:not([data-theme-ignore] *) {
+  background-color: rgb(139 92 246 / 0.14);
+}
+
+html.dark .bg-violet-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-violet-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-violet-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(139 92 246 / 0.22);
+}
+
+html.dark .text-violet-700:not([data-theme-ignore] *),
+html.dark .text-violet-800:not([data-theme-ignore] *),
+html.dark .text-violet-900:not([data-theme-ignore] *),
+html.dark .hover\:text-violet-800:not([data-theme-ignore] *):hover {
+  color: #c4b5fd;
+}
+
+html.dark .text-violet-600:not([data-theme-ignore] *),
+html.dark .hover\:text-violet-600:not([data-theme-ignore] *):hover {
+  color: #a78bfa;
+}
+
+html.dark .border-violet-200:not([data-theme-ignore] *),
+html.dark .border-violet-300:not([data-theme-ignore] *) {
+  border-color: rgb(139 92 246 / 0.4);
+}
+
+html.dark .bg-green-50:not([data-theme-ignore] *) {
+  background-color: rgb(34 197 94 / 0.14);
+}
+
+html.dark .bg-green-100:not([data-theme-ignore] *),
+html.dark .hover\:bg-green-100:not([data-theme-ignore] *):hover,
+html.dark .hover\:bg-green-50:not([data-theme-ignore] *):hover {
+  background-color: rgb(34 197 94 / 0.22);
+}
+
+html.dark .text-green-700:not([data-theme-ignore] *),
+html.dark .text-green-800:not([data-theme-ignore] *),
+html.dark .text-green-900:not([data-theme-ignore] *),
+html.dark .hover\:text-green-800:not([data-theme-ignore] *):hover {
+  color: #86efac;
+}
+
+html.dark .text-green-600:not([data-theme-ignore] *),
+html.dark .hover\:text-green-600:not([data-theme-ignore] *):hover {
+  color: #4ade80;
+}
+
+html.dark .border-green-200:not([data-theme-ignore] *),
+html.dark .border-green-300:not([data-theme-ignore] *) {
+  border-color: rgb(34 197 94 / 0.4);
+}
+
+/* Card cover fade */
+html.dark .after\:from-white\/80:not([data-theme-ignore] *)::after {
+  --tw-gradient-from: rgb(15 23 42 / 0.8) var(--tw-gradient-from-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* Charts */
+html.dark .recharts-cartesian-axis-tick-value,
+html.dark .recharts-text {
+  fill: #94a3b8;
+}
+html.dark .recharts-cartesian-grid line,
+html.dark .recharts-cartesian-axis-line,
+html.dark .recharts-cartesian-axis-tick-line {
+  stroke: #273449;
+}
+html.dark .recharts-default-tooltip {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #e2e8f0;
+}
+html.dark .recharts-sector,
+html.dark .recharts-pie-sector path {
+  stroke: #0f172a;
+}
+
+/* shadcn components (dialogs, inputs, selects, outline buttons) */
+html.dark {
+  --background: 222.2 47.4% 11.2%;
+  --card: 222.2 47.4% 11.2%;
+  --popover: 222.2 47.4% 11.2%;
+  --border: 217.2 32.6% 20%;
+  --input: 217.2 32.6% 22%;
+}

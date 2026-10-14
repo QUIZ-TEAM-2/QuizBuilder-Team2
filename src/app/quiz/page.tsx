@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import type { Id, Component } from "@/types";
 import ConvexUserButton from "@/components/auth/convex-user-button";
+import { DashboardThemeScope, ThemeToggle } from "@/components/theme/DashboardTheme";
 import AiQuizGeneratorDialog from "@/components/quiz/AiQuizGeneratorDialog";
 import ShareQuizDialog from "@/components/quiz/ShareQuizDialog";
 import {
@@ -536,6 +537,7 @@ function AuthenticatedQuizContent() {
               New Quiz
             </Button>
 
+            <ThemeToggle />
             <ConvexUserButton />
           </div>
         </header>
@@ -1086,5 +1088,9 @@ function AuthenticatedQuizContent() {
 }
 
 export default function QuizListPage() {
-  return <AuthenticatedQuizContent />;
+  return (
+    <DashboardThemeScope>
+      <AuthenticatedQuizContent />
+    </DashboardThemeScope>
+  );
 }

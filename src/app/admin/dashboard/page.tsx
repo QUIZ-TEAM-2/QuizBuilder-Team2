@@ -25,6 +25,7 @@ import {
   YAxis,
 } from "recharts";
 import { Activity, BarChart3, CircleHelp, PieChart, TrendingUp } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/DashboardTheme";
 
 const MIN_VOLUME_FOR_COMPARE_PCT = 3;
 
@@ -212,6 +213,7 @@ function DashboardLayoutFrame({
             <Link href="/quiz">
               <Button variant="outline">Back to editor</Button>
             </Link>
+            <ThemeToggle />
             <ConvexUserButton />
           </div>
         </div>
@@ -2138,6 +2140,8 @@ function FunnelPyramid({
                 <div className="flex justify-center">
                   <div
                     className="relative h-8 w-full"
+                    // Pastel bars keep their dark labels in dark mode.
+                    data-theme-ignore
                     style={{
                       width: `${pct * 100}%`,
                       minWidth: shapeMin,

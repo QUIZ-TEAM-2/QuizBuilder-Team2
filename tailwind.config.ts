@@ -2,6 +2,7 @@ import { type Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
+  darkMode: "class",
   safelist: [
     // Dynamic layout variants
     ...Array.from({ length: 6 }, (_, i) => `grid-cols-${i + 1}`),

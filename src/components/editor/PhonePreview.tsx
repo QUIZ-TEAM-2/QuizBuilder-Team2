@@ -1817,6 +1817,8 @@ export default function PhonePreview({
   return (
     <div
       ref={previewWrapperRef}
+      // Quiz content keeps the creator's colours in the dashboard's dark mode.
+      data-theme-ignore
       className={`flex flex-col items-center justify-center ${className}`}
     >
       {/* Layout box sized to scaled dimensions to prevent stretching */}

@@ -37,6 +37,7 @@ import type {
   NameType,
   Payload,
 } from "recharts/types/component/DefaultTooltipContent";
+import { ThemeToggle } from "@/components/theme/DashboardTheme";
 
 const COLORS = [
   "#2563eb",
@@ -519,6 +520,7 @@ export default function QuizAnalyticsClient({
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link href={isAdmin ? "/admin/dashboard" : "/dashboard/quizzes"}>
               <Button variant="outline">Back to dashboard</Button>
             </Link>
