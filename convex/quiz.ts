@@ -714,6 +714,7 @@ export const updateQuiz = mutation({
     quizType: v.optional(
       v.union(v.literal("personality"), v.literal("knowledge")),
     ),
+    leaderboardEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -747,6 +748,7 @@ export const updateQuiz = mutation({
       coverImage: string | undefined;
       shuffleQuestions: boolean;
       quizType: "personality" | "knowledge";
+      leaderboardEnabled: boolean;
     }> = {};
 
     if (args.title !== undefined) {
@@ -789,6 +791,8 @@ export const updateQuiz = mutation({
     if (args.shuffleQuestions !== undefined)
       updateData.shuffleQuestions = args.shuffleQuestions;
     if (args.quizType !== undefined) updateData.quizType = args.quizType;
+    if (args.leaderboardEnabled !== undefined)
+      updateData.leaderboardEnabled = args.leaderboardEnabled;
 
     await ctx.db.patch(args.id, { ...updateData, updatedAt: Date.now() });
     return {
@@ -826,6 +830,14 @@ export const deleteQuiz = mutation({
     for (const result of results) {
       await deleteComponentsForPage(ctx, result._id);
       await ctx.db.delete(result._id);
+    }
+
+    const leaderboardEntries = await ctx.db
+      .query("leaderboardEntries")
+      .withIndex("by_quizId_rankKey", (q) => q.eq("quizId", args.id))
+      .collect();
+    for (const entry of leaderboardEntries) {
+      await ctx.db.delete(entry._id);
     }
 
     await ctx.db.delete(args.id);
@@ -2313,6 +2325,7 @@ export const duplicateQuiz = mutation({
       topic: source.topic,
       shuffleQuestions: source.shuffleQuestions,
       quizType: source.quizType,
+      leaderboardEnabled: source.leaderboardEnabled,
       tags: source.tags,
       userId,
       pageIds: [],

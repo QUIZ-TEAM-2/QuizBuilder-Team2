@@ -41,6 +41,7 @@ type QuizBasicInfo = {
   coverImage?: string;
   shuffleQuestions?: boolean;
   quizType?: QuizType;
+  leaderboardEnabled?: boolean;
 };
 
 type QuizType = "personality" | "knowledge";
@@ -66,6 +67,7 @@ type BasicInfoForm = {
   coverImage: string;
   shuffleQuestions: boolean;
   quizType: QuizType;
+  leaderboardEnabled: boolean;
 };
 
 const QUIZ_TOPICS: Array<{ value: QuizTopic; label: string }> = [
@@ -114,6 +116,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     coverImage: "",
     shuffleQuestions: false,
     quizType: "personality",
+    leaderboardEnabled: true,
   });
 
   const quizInfo = quizQuery as (typeof quizQuery & QuizBasicInfo) | undefined;
@@ -160,6 +163,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       coverImage: quizInfo.coverImage ?? "",
       shuffleQuestions: quizInfo.shuffleQuestions === true,
       quizType: quizInfo.quizType === "knowledge" ? "knowledge" : "personality",
+      leaderboardEnabled: quizInfo.leaderboardEnabled !== false,
     });
   }, [quizInfo]);
 
@@ -241,6 +245,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
           coverImage: nextInfo.coverImage.trim(),
           shuffleQuestions: nextInfo.shuffleQuestions,
           quizType: nextInfo.quizType,
+          leaderboardEnabled: nextInfo.leaderboardEnabled,
         });
       } catch (error) {
         console.error("Failed to update quiz info:", error);
@@ -627,10 +632,41 @@ function QuizBasicInfoSidebar({
             </SelectContent>
           </Select>
           {value.quizType === "knowledge" ? (
-            <p className="text-xs text-gray-500">
-              Mark correct answers and set score bands in the Result Mapping
-              tab. Use {"{score}"} and {"{total}"} in result page text.
-            </p>
+            <>
+              <p className="text-xs text-gray-500">
+                Mark correct answers and set score bands in the Result Mapping
+                tab. Use {"{score}"} and {"{total}"} in result page text.
+              </p>
+              <label
+                htmlFor="quiz-leaderboard"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 px-3 py-2"
+              >
+                <input
+                  id="quiz-leaderboard"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4"
+                  checked={value.leaderboardEnabled}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    const nextValue = {
+                      ...value,
+                      leaderboardEnabled: event.target.checked,
+                    };
+                    onChange(nextValue);
+                    onSave(nextValue);
+                  }}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-gray-900">
+                    Show leaderboard
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Players can add their name and see the top 10 scores
+                    after finishing.
+                  </span>
+                </span>
+              </label>
+            </>
           ) : null}
         </div>
 

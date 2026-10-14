@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2, Share2 } from "lucide-react";
+import { ArrowLeft, Loader2, Share2, Trophy } from "lucide-react";
 import PhonePreview from "@/components/editor/PhonePreview";
+import LeaderboardDialog from "@/components/quiz/LeaderboardDialog";
 import { Button } from "@/components/ui/button";
 import { api } from "../../../../convex/_generated/api";
 import type {
@@ -169,6 +170,7 @@ export default function PlayQuizPage() {
     return createClientSessionId(playSurface, crypto.randomUUID());
   });
   const [isSharing, setIsSharing] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   // Knowledge quizzes: right/wrong highlight after answering, and final score.
   const [answerFeedbackById, setAnswerFeedbackById] = useState<Record<
     string,
@@ -1570,6 +1572,26 @@ export default function PlayQuizPage() {
       </Button>
     ) : null;
 
+  const showLeaderboard =
+    quizCompleted &&
+    !!resultPage &&
+    !isCalculatingResults &&
+    isKnowledgeQuiz &&
+    (quizQuery as { leaderboardEnabled?: boolean } | null | undefined)
+      ?.leaderboardEnabled !== false;
+
+  const leaderboardButton =
+    showLeaderboard && quizQuery ? (
+      <Button
+        size="sm"
+        className="fixed bottom-6 left-4 z-30 gap-2 rounded-full bg-amber-400 px-4 font-semibold text-slate-950 shadow-lg hover:bg-amber-300"
+        onClick={() => setIsLeaderboardOpen(true)}
+      >
+        <Trophy className="h-4 w-4" />
+        Leaderboard
+      </Button>
+    ) : null;
+
   const backButton = isEmbed ? null : (
     <Button
       variant="ghost"
@@ -1707,6 +1729,17 @@ export default function PlayQuizPage() {
       <audio ref={bgmAudioRef} preload="auto" />
       {backButton}
       {shareButton}
+      {leaderboardButton}
+      {showLeaderboard && quizQuery ? (
+        <LeaderboardDialog
+          quizId={quizQuery._id}
+          quizTitle={quizQuery.title}
+          sessionId={sessionId}
+          isPreview={isPreviewMode}
+          open={isLeaderboardOpen}
+          onOpenChange={setIsLeaderboardOpen}
+        />
+      ) : null}
       {isDesktopViewport === null ? null : isDesktopViewport ? (
         <div className="grid h-screen grid-cols-3 bg-black">
           <div />
