@@ -726,6 +726,17 @@ export default function EditorPreviewPanel({
                     transitionKey={phonePreviewProps.transitionKey}
                     transitionSequence={phonePreviewProps.transitionSequence}
                     scale={0.6}
+                    // Question pages: progress shows this page's real position.
+                    currentPageNumber={
+                      pageType === "quiz" && navigation
+                        ? navigation.activeIndex + 1
+                        : undefined
+                    }
+                    totalPages={
+                      pageType === "quiz" && navigation
+                        ? navigation.totalCount
+                        : undefined
+                    }
                     selectedComponentId={
                       isTransitionPreviewing
                         ? undefined

@@ -470,6 +470,12 @@ export function buildOnboardingLayout(draft: AiQuizDraft): ComponentSpec[] {
   ];
 }
 
+/** Space for the question and answers: below the progress dots, above the bottom edge. */
+export const QUESTION_AREA = { top: 12, bottom: 92 } as const;
+
+/** Moves the result page content down so it sits in the middle of the screen. */
+const RESULT_OFFSET = 7;
+
 export function buildQuestionLayout(
   draft: AiQuizDraft,
   questionIndex: number,
@@ -483,24 +489,41 @@ export function buildQuestionLayout(
       position: { x: 0, y: 6, width: 70, height: 4 },
       props: { variant: "dots", currentColor: t.accent, totalColor: "#ffffff" },
     },
+  ];
+
+  // Fewer answers get taller cards, and the question plus answers sit in the
+  // middle of the space under the progress dots instead of leaving the bottom
+  // of the screen empty.
+  const count = question.answers.length;
+  const cardHeight = count <= 2 ? 13 : count === 3 ? 11 : 10;
+  const gap = 3;
+  const questionHeight = 17;
+  const questionGap = 6;
+  const blockHeight =
+    questionHeight + questionGap + count * cardHeight + (count - 1) * gap;
+  const top = Math.max(
+    QUESTION_AREA.top,
+    QUESTION_AREA.top + (QUESTION_AREA.bottom - QUESTION_AREA.top - blockHeight) / 2,
+  );
+  const answersTop = top + questionHeight + questionGap;
+
+  specs.push(
     text(
       question.question,
-      { x: 0, y: 13, width: 86, height: 17 },
+      { x: 0, y: top, width: 86, height: questionHeight },
       {
         fontSize: 24,
         bold: true,
       },
     ),
-  ];
+  );
 
-  const cardHeight = 9.5;
-  const gap = 2.5;
   question.answers.forEach((answer, index) => {
     const scores = [{ resultIndex: answer.result, points: PRIMARY_POINTS }];
     if (answer.alsoResult >= 0) {
       scores.push({ resultIndex: answer.alsoResult, points: SECONDARY_POINTS });
     }
-    const y = 35 + index * (cardHeight + gap);
+    const y = answersTop + index * (cardHeight + gap);
     specs.push(
       roundedBox({ x: 0, y, width: 88, height: cardHeight }, t.surface, {
         cornerRadius: 18,
@@ -537,7 +560,7 @@ export function buildResultLayout(
     blob(t.accent, 45, 82, 60, 10),
     text(
       "You got",
-      { x: 0, y: 12, width: 60, height: 4 },
+      { x: 0, y: 12 + RESULT_OFFSET, width: 60, height: 4 },
       {
         fontSize: 15,
         bold: true,
@@ -546,23 +569,23 @@ export function buildResultLayout(
     ),
     text(
       result.emoji,
-      { x: 0, y: 18, width: 40, height: 12 },
+      { x: 0, y: 18 + RESULT_OFFSET, width: 40, height: 12 },
       { fontSize: 64 },
     ),
     text(
       result.name,
-      { x: 0, y: 31, width: 86, height: 14 },
+      { x: 0, y: 31 + RESULT_OFFSET, width: 86, height: 14 },
       {
         fontSize: 32,
         bold: true,
       },
     ),
-    roundedBox({ x: 0, y: 48, width: 88, height: 26 }, t.surface, {
+    roundedBox({ x: 0, y: 48 + RESULT_OFFSET, width: 88, height: 26 }, t.surface, {
       cornerRadius: 22,
     }),
     text(
       result.description,
-      { x: 0, y: 49, width: 76, height: 24 },
+      { x: 0, y: 49 + RESULT_OFFSET, width: 76, height: 24 },
       {
         fontSize: 16,
         color: t.muted,

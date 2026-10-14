@@ -4,6 +4,7 @@ import { ProgressBarToolbar } from "./Toolbar";
 import {
   DEFAULT_PROGRESS_BAR_PROPS,
   PROGRESS_BAR_COMPONENT_SLUG,
+  getProgressValues,
   type ProgressBarComponent,
 } from "./types";
 import {
@@ -29,12 +30,7 @@ function renderProgressBarComponent({
   helpers,
 }: ComponentRenderParams<ProgressBarComponent>) {
   const props = component.props ?? {};
-  const currentValue = helpers.isEditable
-    ? "X"
-    : String(helpers.currentPageNumber ?? 1);
-  const totalValue = helpers.isEditable
-    ? "Y"
-    : String(helpers.totalPages ?? 1);
+  const { currentValue, totalValue } = getProgressValues(helpers);
 
   return (
     <ProgressBarView
