@@ -33,10 +33,12 @@ import {
   Star,
   GitBranch,
   LinkIcon,
+  QrCode,
 } from "lucide-react";
 import type { Id, Component } from "@/types";
 import ConvexUserButton from "@/components/auth/convex-user-button";
 import AiQuizGeneratorDialog from "@/components/quiz/AiQuizGeneratorDialog";
+import ShareQuizDialog from "@/components/quiz/ShareQuizDialog";
 import {
   AdminDashboardNavDropdown,
   UserDashboardNavButton,
@@ -239,6 +241,10 @@ function AuthenticatedQuizContent() {
   const duplicateQuizMutation = useMutation(api.quiz.duplicateQuiz);
   const [duplicatingId, setDuplicatingId] = useState<Id<"quiz"> | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [shareDialog, setShareDialog] = useState<{
+    quiz: QuizWithPreview | null;
+    headline?: string;
+  }>({ quiz: null });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "draft" | "published" | "closed"
@@ -360,6 +366,7 @@ function AuthenticatedQuizContent() {
         return;
       }
       toast.success("Quiz published");
+      setShareDialog({ quiz, headline: "Your quiz is live" });
     } catch (error) {
       console.error("Failed to publish quiz:", error);
       toast.error("Failed to publish quiz");
@@ -721,6 +728,18 @@ function AuthenticatedQuizContent() {
                           Copy link
                         </Button>
                       )}
+                      {quiz.status === "published" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShareDialog({ quiz })}
+                          className="h-7 gap-1.5 border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                          title="QR code and embed code"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          Share
+                        </Button>
+                      )}
                     </div>
 
                     <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
@@ -825,6 +844,15 @@ function AuthenticatedQuizContent() {
       </div>
 
       <AiQuizGeneratorDialog open={aiDialogOpen} onOpenChange={setAiDialogOpen} />
+
+      <ShareQuizDialog
+        quiz={shareDialog.quiz}
+        headline={shareDialog.headline}
+        open={shareDialog.quiz !== null}
+        onOpenChange={(open) => {
+          if (!open) setShareDialog({ quiz: null });
+        }}
+      />
 
       {/* Create Quiz Dialog */}
       <Dialog

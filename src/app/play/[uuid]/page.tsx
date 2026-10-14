@@ -151,6 +151,8 @@ export default function PlayQuizPage() {
   const isPreviewMode = playSurface === "preview";
   const playSource = searchParams?.get("source");
   const returnTo = searchParams?.get("returnTo");
+  // Embedded on another site via the share dialog's <iframe> snippet.
+  const isEmbed = searchParams?.get("embed") === "1";
 
   // Saved progress from an earlier visit (public play only). If present, the
   // player continues the same session instead of starting a new one.
@@ -1568,7 +1570,7 @@ export default function PlayQuizPage() {
       </Button>
     ) : null;
 
-  const backButton = (
+  const backButton = isEmbed ? null : (
     <Button
       variant="ghost"
       size="sm"
