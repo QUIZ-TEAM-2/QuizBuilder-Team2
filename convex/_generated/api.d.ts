@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as aiQuestionRegen from "../aiQuestionRegen.js";
 import type * as aiQuiz from "../aiQuiz.js";
 import type * as aiQuizDraft from "../aiQuizDraft.js";
 import type * as analytics from "../analytics.js";
@@ -22,9 +23,12 @@ import type * as bootstrap from "../bootstrap.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as knowledgeScoring from "../knowledgeScoring.js";
+import type * as leaderboard from "../leaderboard.js";
+import type * as leaderboardRules from "../leaderboardRules.js";
 import type * as quiz from "../quiz.js";
 import type * as quizAccessRules from "../quizAccessRules.js";
 import type * as quizPlay from "../quizPlay.js";
+import type * as quizSchedule from "../quizSchedule.js";
 import type * as schemas from "../schemas.js";
 import type * as sendgridOtp from "../sendgridOtp.js";
 import type * as templates from "../templates.js";
@@ -38,6 +42,7 @@ import type * as templates from "../templates.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  aiQuestionRegen: typeof aiQuestionRegen;
   aiQuiz: typeof aiQuiz;
   aiQuizDraft: typeof aiQuizDraft;
   analytics: typeof analytics;
@@ -47,9 +52,12 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   images: typeof images;
   knowledgeScoring: typeof knowledgeScoring;
+  leaderboard: typeof leaderboard;
+  leaderboardRules: typeof leaderboardRules;
   quiz: typeof quiz;
   quizAccessRules: typeof quizAccessRules;
   quizPlay: typeof quizPlay;
+  quizSchedule: typeof quizSchedule;
   schemas: typeof schemas;
   sendgridOtp: typeof sendgridOtp;
   templates: typeof templates;

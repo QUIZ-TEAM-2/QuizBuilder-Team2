@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageIcon, Loader2, Plus, X } from "lucide-react";
+import { CalendarClock, ImageIcon, Loader2, Plus, Sparkles, X } from "lucide-react";
 import EditorPreviewPanel from "./EditorPreviewPanel";
 import RenamePageDialog from "./RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
@@ -24,6 +24,13 @@ import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
 import { api } from "../../../../../convex/_generated/api";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import { useTemplates } from "@/hooks/useTemplates";
+import { useGenerateCover } from "@/hooks/useGenerateCover";
+import { coverTitle, pickCoverTheme } from "@/lib/coverTheme";
+import {
+  fromDateTimeLocalValue,
+  toDateTimeLocalValue,
+  validateSchedule,
+} from "../../../../../convex/quizSchedule";
 import type { Component, PageEntity } from "@/types";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -41,6 +48,9 @@ type QuizBasicInfo = {
   coverImage?: string;
   shuffleQuestions?: boolean;
   quizType?: QuizType;
+  leaderboardEnabled?: boolean;
+  opensAt?: number;
+  closesAt?: number;
 };
 
 type QuizType = "personality" | "knowledge";
@@ -66,6 +76,9 @@ type BasicInfoForm = {
   coverImage: string;
   shuffleQuestions: boolean;
   quizType: QuizType;
+  leaderboardEnabled: boolean;
+  opensAt: number | null;
+  closesAt: number | null;
 };
 
 const QUIZ_TOPICS: Array<{ value: QuizTopic; label: string }> = [
@@ -114,6 +127,9 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     coverImage: "",
     shuffleQuestions: false,
     quizType: "personality",
+    leaderboardEnabled: true,
+    opensAt: null,
+    closesAt: null,
   });
 
   const quizInfo = quizQuery as (typeof quizQuery & QuizBasicInfo) | undefined;
@@ -160,6 +176,9 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       coverImage: quizInfo.coverImage ?? "",
       shuffleQuestions: quizInfo.shuffleQuestions === true,
       quizType: quizInfo.quizType === "knowledge" ? "knowledge" : "personality",
+      leaderboardEnabled: quizInfo.leaderboardEnabled !== false,
+      opensAt: quizInfo.opensAt ?? null,
+      closesAt: quizInfo.closesAt ?? null,
     });
   }, [quizInfo]);
 
@@ -231,7 +250,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
 
       setIsSavingBasicInfo(true);
       try {
-        await updateQuiz({
+        const result = await updateQuiz({
           id: quizId,
           description: nextInfo.description.trim(),
           tags: nextInfo.tags,
@@ -241,7 +260,13 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
           coverImage: nextInfo.coverImage.trim(),
           shuffleQuestions: nextInfo.shuffleQuestions,
           quizType: nextInfo.quizType,
+          leaderboardEnabled: nextInfo.leaderboardEnabled,
+          opensAt: nextInfo.opensAt,
+          closesAt: nextInfo.closesAt,
         });
+        if (result && result.ok === false && result.message) {
+          toast.error(result.message);
+        }
       } catch (error) {
         console.error("Failed to update quiz info:", error);
         toast.error("Failed to save quiz info");
@@ -276,6 +301,39 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     [basicInfo, handleSaveBasicInfo],
   );
 
+  const generateCover = useGenerateCover();
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+  const handleGenerateCover = useCallback(async () => {
+    if (isGeneratingCover) return;
+    setIsGeneratingCover(true);
+    try {
+      const theme = pickCoverTheme(
+        onboardingPage?.components,
+        onboardingPage?.background,
+      );
+      const url = await generateCover({
+        ...theme,
+        title: coverTitle(quizInfo?.title),
+        brandName: basicInfo.brandName,
+      });
+      handleCoverImageSelect(url);
+      toast.success("Cover image created");
+    } catch (error) {
+      console.error("Failed to generate cover image:", error);
+      toast.error("Couldn't create a cover image");
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  }, [
+    basicInfo.brandName,
+    generateCover,
+    handleCoverImageSelect,
+    isGeneratingCover,
+    onboardingPage?.background,
+    onboardingPage?.components,
+    quizInfo?.title,
+  ]);
+
   const handleCoverImageClear = useCallback(() => {
     const nextInfo = { ...basicInfo, coverImage: "" };
     setBasicInfo(nextInfo);
@@ -292,6 +350,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
         onClearBrandAvatar={handleBrandAvatarClear}
         onPickCoverImage={() => setIsCoverImagePickerOpen(true)}
         onClearCoverImage={handleCoverImageClear}
+        onGenerateCoverImage={() => void handleGenerateCover()}
+        isGeneratingCover={isGeneratingCover}
         isSaving={isSavingBasicInfo}
       />
     ),
@@ -299,6 +359,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       basicInfo,
       handleBrandAvatarClear,
       handleCoverImageClear,
+      handleGenerateCover,
+      isGeneratingCover,
       handleSaveBasicInfo,
       isSavingBasicInfo,
     ],
@@ -472,6 +534,8 @@ type QuizBasicInfoSidebarProps = {
   onClearBrandAvatar: () => void;
   onPickCoverImage: () => void;
   onClearCoverImage: () => void;
+  onGenerateCoverImage: () => void;
+  isGeneratingCover: boolean;
   isSaving: boolean;
 };
 
@@ -483,6 +547,8 @@ function QuizBasicInfoSidebar({
   onClearBrandAvatar,
   onPickCoverImage,
   onClearCoverImage,
+  onGenerateCoverImage,
+  isGeneratingCover,
   isSaving,
 }: QuizBasicInfoSidebarProps) {
   const [pendingTag, setPendingTag] = useState("");
@@ -627,10 +693,41 @@ function QuizBasicInfoSidebar({
             </SelectContent>
           </Select>
           {value.quizType === "knowledge" ? (
-            <p className="text-xs text-gray-500">
-              Mark correct answers and set score bands in the Result Mapping
-              tab. Use {"{score}"} and {"{total}"} in result page text.
-            </p>
+            <>
+              <p className="text-xs text-gray-500">
+                Mark correct answers and set score bands in the Result Mapping
+                tab. Use {"{score}"} and {"{total}"} in result page text.
+              </p>
+              <label
+                htmlFor="quiz-leaderboard"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-gray-200 px-3 py-2"
+              >
+                <input
+                  id="quiz-leaderboard"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4"
+                  checked={value.leaderboardEnabled}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    const nextValue = {
+                      ...value,
+                      leaderboardEnabled: event.target.checked,
+                    };
+                    onChange(nextValue);
+                    onSave(nextValue);
+                  }}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-gray-900">
+                    Show leaderboard
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Players can add their name and see the top 10 scores
+                    after finishing.
+                  </span>
+                </span>
+              </label>
+            </>
           ) : null}
         </div>
 
@@ -689,6 +786,13 @@ function QuizBasicInfoSidebar({
             </span>
           </label>
         </div>
+
+        <QuizScheduleFields
+          value={value}
+          onChange={onChange}
+          onSave={onSave}
+          isSaving={isSaving}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="quiz-brand-name">Brand Name</Label>
@@ -774,6 +878,22 @@ function QuizBasicInfoSidebar({
               <ImageIcon className="h-4 w-4" />
               Choose
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+              onClick={onGenerateCoverImage}
+              disabled={isSaving || isGeneratingCover}
+              title="Make a cover from the quiz title, colours and emoji"
+            >
+              {isGeneratingCover ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Generate
+            </Button>
             {value.coverImage ? (
               <Button
                 type="button"
@@ -791,5 +911,86 @@ function QuizBasicInfoSidebar({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function QuizScheduleFields({
+  value,
+  onChange,
+  onSave,
+  isSaving,
+}: {
+  value: BasicInfoForm;
+  onChange: (value: BasicInfoForm) => void;
+  onSave: (value?: BasicInfoForm) => void;
+  isSaving: boolean;
+}) {
+  const error = validateSchedule({
+    opensAt: value.opensAt,
+    closesAt: value.closesAt,
+  });
+
+  const update = (field: "opensAt" | "closesAt", timestamp: number | null) => {
+    const nextValue = { ...value, [field]: timestamp };
+    onChange(nextValue);
+    if (!validateSchedule(nextValue)) onSave(nextValue);
+  };
+
+  const field = (
+    id: string,
+    label: string,
+    key: "opensAt" | "closesAt",
+  ) => (
+    <div className="space-y-1">
+      <Label htmlFor={id} className="text-xs text-gray-600">
+        {label}
+      </Label>
+      <div className="flex items-center gap-1.5">
+        <Input
+          id={id}
+          type="datetime-local"
+          value={toDateTimeLocalValue(value[key])}
+          disabled={isSaving}
+          onChange={(event) =>
+            update(key, fromDateTimeLocalValue(event.target.value))
+          }
+          className="h-9 min-w-0 flex-1 text-sm"
+        />
+        {value[key] !== null ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 text-gray-400 hover:text-red-600"
+            onClick={() => update(key, null)}
+            disabled={isSaving}
+            aria-label={`Clear ${label.toLowerCase()} time`}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <CalendarClock className="h-4 w-4 text-gray-500" />
+        Schedule
+      </Label>
+      <div className="space-y-2 rounded-md border border-gray-200 px-3 py-2">
+        {field("quiz-opens-at", "Opens", "opensAt")}
+        {field("quiz-closes-at", "Closes", "closesAt")}
+        {error ? (
+          <p className="text-xs font-medium text-red-600">{error}</p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Optional. Once published, players can only start the quiz between
+            these times. Leave blank to keep it open.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

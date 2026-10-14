@@ -136,12 +136,16 @@ export function buildResponseSchema() {
   };
 }
 
-const asRecord = (value: unknown): Record<string, unknown> | null =>
+export const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 
-const cleanText = (value: unknown, maxLength: number): string => {
+/** Answer buttons read better without a trailing full stop ("Talk to a mate"). */
+export const stripTrailingFullStop = (text: string): string =>
+  text.endsWith("...") || text.endsWith("…") ? text : text.replace(/\.$/, "");
+
+export const cleanText = (value: unknown, maxLength: number): string => {
   if (typeof value !== "string") return "";
   const text = value.replace(/\s+/g, " ").trim();
   if (text.length <= maxLength) return text;
@@ -286,7 +290,7 @@ export function parseAiQuizDraft(
             (questionIndex + answerIndex) % resultCount;
           const also = validIndex(answer?.alsoResult);
           return {
-            text: cleanText(answer?.text, 64),
+            text: stripTrailingFullStop(cleanText(answer?.text, 64)),
             result,
             alsoResult: also !== null && also !== result ? also : -1,
           };

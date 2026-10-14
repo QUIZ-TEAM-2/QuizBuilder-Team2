@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { getScheduleState } from "../../../convex/quizSchedule";
 import DiscoverQuizCard from "@/components/quiz/DiscoverQuizCard";
 import {
   ArrowDown,
@@ -44,6 +45,8 @@ type DiscoverQuiz = {
   viewCount?: number;
   components?: unknown[];
   background?: unknown;
+  opensAt?: number;
+  closesAt?: number;
 };
 
 type SortOption = "popular" | "newest";
@@ -550,7 +553,15 @@ export default function DiscoverPage() {
   const [heroCardIndex, setHeroCardIndex] = useState(0);
   const [activeCategory, setActiveCategory] = useState<CategoryItem | null>(null);
 
-  const sourceQuizzes = useMemo(() => (quizzes ?? []) as DiscoverQuiz[], [quizzes]);
+  // Quizzes whose scheduled window has ended drop off Discover. Upcoming ones
+  // stay, and their page shows a countdown.
+  const sourceQuizzes = useMemo(
+    () =>
+      ((quizzes ?? []) as DiscoverQuiz[]).filter(
+        (quiz) => getScheduleState(quiz, Date.now()) !== "ended",
+      ),
+    [quizzes],
+  );
 
   const filteredQuizzes = useMemo(() => {
     const query = search.trim().toLowerCase();

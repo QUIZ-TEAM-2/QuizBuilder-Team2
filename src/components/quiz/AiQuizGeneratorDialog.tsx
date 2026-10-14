@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useGenerateCover } from "@/hooks/useGenerateCover";
 
 const EXAMPLES = [
   "Which Melbourne suburb matches your vibe?",
@@ -47,6 +48,8 @@ export function AiQuizGeneratorDialog({
 }: AiQuizGeneratorDialogProps) {
   const router = useRouter();
   const generateQuiz = useAction(api.aiQuiz.generateQuiz);
+  const updateQuiz = useMutation(api.quiz.updateQuiz);
+  const generateCover = useGenerateCover();
   const [topic, setTopic] = useState("");
   const [questions, setQuestions] = useState<number>(
     AI_QUIZ_LIMITS.questions.default,
@@ -69,12 +72,20 @@ export function AiQuizGeneratorDialog({
     setIsGenerating(true);
     setError(null);
     try {
-      const { quizId } = await generateQuiz({
+      const { quizId, cover } = await generateQuiz({
         topic: trimmed,
         questions,
         results,
         answers,
       });
+      // Publishing needs a cover image, so draw one in the quiz's colours.
+      // A failure here isn't fatal: the creator can add one by hand.
+      try {
+        const coverImage = await generateCover(cover);
+        await updateQuiz({ id: quizId, coverImage });
+      } catch (coverError) {
+        console.error("Couldn't create a cover image", coverError);
+      }
       toast.success(
         "Quiz generated. Review it, then publish when you're happy.",
       );

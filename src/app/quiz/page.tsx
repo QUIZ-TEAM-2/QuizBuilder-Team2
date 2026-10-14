@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { getScheduleBadge } from "../../../convex/quizSchedule";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -33,10 +34,14 @@ import {
   Star,
   GitBranch,
   LinkIcon,
+  QrCode,
+  Clock,
 } from "lucide-react";
 import type { Id, Component } from "@/types";
 import ConvexUserButton from "@/components/auth/convex-user-button";
+import { DashboardThemeScope, ThemeToggle } from "@/components/theme/DashboardTheme";
 import AiQuizGeneratorDialog from "@/components/quiz/AiQuizGeneratorDialog";
+import ShareQuizDialog from "@/components/quiz/ShareQuizDialog";
 import {
   AdminDashboardNavDropdown,
   UserDashboardNavButton,
@@ -65,6 +70,8 @@ interface QuizWithPreview {
   pageCount?: number;
   resultCount?: number;
   publishVersion?: number;
+  opensAt?: number;
+  closesAt?: number;
   pageIds?: Id<"pages">[];
   resultIds?: Id<"results">[];
   onboardingPageId?: Id<"pages">;
@@ -94,6 +101,26 @@ function QuizTitleHeading({
         </span>
       ) : null}
     </span>
+  );
+}
+
+const SCHEDULE_BADGE_CLASSES = {
+  upcoming: "bg-amber-50 text-amber-700",
+  closing: "bg-sky-50 text-sky-700",
+  ended: "bg-slate-200 text-slate-600",
+} as const;
+
+function ScheduleBadgeChip({ quiz }: { quiz: QuizWithPreview }) {
+  const badge = getScheduleBadge(quiz.status, quiz, Date.now());
+  if (!badge) return null;
+  return (
+    <Badge
+      variant="outline"
+      className={`border-0 text-xs ${SCHEDULE_BADGE_CLASSES[badge.tone]}`}
+    >
+      <Clock className="mr-1 h-3 w-3" />
+      {badge.label}
+    </Badge>
   );
 }
 
@@ -239,6 +266,10 @@ function AuthenticatedQuizContent() {
   const duplicateQuizMutation = useMutation(api.quiz.duplicateQuiz);
   const [duplicatingId, setDuplicatingId] = useState<Id<"quiz"> | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [shareDialog, setShareDialog] = useState<{
+    quiz: QuizWithPreview | null;
+    headline?: string;
+  }>({ quiz: null });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "draft" | "published" | "closed"
@@ -360,6 +391,7 @@ function AuthenticatedQuizContent() {
         return;
       }
       toast.success("Quiz published");
+      setShareDialog({ quiz, headline: "Your quiz is live" });
     } catch (error) {
       console.error("Failed to publish quiz:", error);
       toast.error("Failed to publish quiz");
@@ -505,6 +537,7 @@ function AuthenticatedQuizContent() {
               New Quiz
             </Button>
 
+            <ThemeToggle />
             <ConvexUserButton />
           </div>
         </header>
@@ -680,6 +713,7 @@ function AuthenticatedQuizContent() {
                       >
                         {getQuizStatusLabel(quiz.status)}
                       </Badge>
+                      <ScheduleBadgeChip quiz={quiz} />
 
 
                       <Badge
@@ -719,6 +753,18 @@ function AuthenticatedQuizContent() {
                         >
                           <LinkIcon className="h-3.5 w-3.5" />
                           Copy link
+                        </Button>
+                      )}
+                      {quiz.status === "published" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShareDialog({ quiz })}
+                          className="h-7 gap-1.5 border-emerald-200 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                          title="QR code and embed code"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          Share
                         </Button>
                       )}
                     </div>
@@ -825,6 +871,15 @@ function AuthenticatedQuizContent() {
       </div>
 
       <AiQuizGeneratorDialog open={aiDialogOpen} onOpenChange={setAiDialogOpen} />
+
+      <ShareQuizDialog
+        quiz={shareDialog.quiz}
+        headline={shareDialog.headline}
+        open={shareDialog.quiz !== null}
+        onOpenChange={(open) => {
+          if (!open) setShareDialog({ quiz: null });
+        }}
+      />
 
       {/* Create Quiz Dialog */}
       <Dialog
@@ -1033,5 +1088,9 @@ function AuthenticatedQuizContent() {
 }
 
 export default function QuizListPage() {
-  return <AuthenticatedQuizContent />;
+  return (
+    <DashboardThemeScope>
+      <AuthenticatedQuizContent />
+    </DashboardThemeScope>
+  );
 }

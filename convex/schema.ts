@@ -65,6 +65,11 @@ export default defineSchema({
     shuffleQuestions: v.optional(v.boolean()),
     /** "personality" (default, answers point to results) or "knowledge" (right/wrong answers and a score). */
     quizType: v.optional(v.union(v.literal("personality"), v.literal("knowledge"))),
+    /** Knowledge quizzes: show the leaderboard after finishing (on unless false). */
+    leaderboardEnabled: v.optional(v.boolean()),
+    /** Optional play window for a published quiz (ms timestamps). */
+    opensAt: v.optional(v.number()),
+    closesAt: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
@@ -202,6 +207,21 @@ export default defineSchema({
   })
     .index("by_sessionId", ["sessionId"])
     .index("by_quizId", ["quizId"]),
+
+  /** Knowledge quiz leaderboard. Scores come from quizResults, never the client. */
+  leaderboardEntries: defineTable({
+    quizId: v.id("quiz"),
+    sessionId: v.string(),
+    name: v.string(),
+    score: v.number(),
+    total: v.number(),
+    durationMs: v.number(),
+    /** Sorts best-first when descending: percentage, then faster time. */
+    rankKey: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_quizId_rankKey", ["quizId", "rankKey"])
+    .index("by_sessionId", ["sessionId"]),
 
   // Quiz results table - final calculated results
   quizResults: defineTable({

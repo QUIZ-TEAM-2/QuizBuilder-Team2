@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useMutation } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,6 +139,8 @@ type EditorPreviewPanelProps = {
   transitionEffect?: PageTransitionEffect;
   onTransitionEffectChange?: (effect: PageTransitionEffect) => void;
   transitionPreviewTarget?: TransitionPreviewTarget | null;
+  /** Extra toolbar buttons shown before "Use Template" (e.g. AI rewrite). */
+  headerExtra?: ReactNode;
 };
 
 export default function EditorPreviewPanel({
@@ -168,6 +177,7 @@ export default function EditorPreviewPanel({
   transitionEffect = "none",
   onTransitionEffectChange,
   transitionPreviewTarget = null,
+  headerExtra,
 }: EditorPreviewPanelProps) {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isSaveTemplateDialogOpen, setIsSaveTemplateDialogOpen] =
@@ -648,6 +658,7 @@ export default function EditorPreviewPanel({
                   </Button>
                 </div>
               )}
+              {headerExtra}
               <Button
                 variant="outline"
                 size="sm"

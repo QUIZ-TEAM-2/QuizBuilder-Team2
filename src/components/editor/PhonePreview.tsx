@@ -19,6 +19,7 @@ import {
   type PageTransitionEffect,
 } from "@/lib/pageTransitions";
 import { canComponentBecomeButton } from "@/lib/quizComponents";
+import { describeAction } from "@/lib/playA11y";
 
 interface PhonePreviewProps {
   components?: Component[];
@@ -297,7 +298,7 @@ function PreviewComponentWrapper({
 
   const interactiveClass = !isEditable
     ? hasAction
-      ? "cursor-pointer hover:brightness-95 active:brightness-90 transition-all" // Play mode: actionable components get click feedback
+      ? "play-action cursor-pointer hover:brightness-95 active:brightness-90 transition-all" // Play mode: actionable components get click feedback
       : ""
     : isMultiSelected
       ? "" // No individual outline for multi-selected components (unified box is shown instead)
@@ -563,10 +564,41 @@ function PreviewComponentWrapper({
     onUpdateProps &&
     onDeleteComponent;
 
+  // Play mode: actionable components behave like real buttons for keyboard
+  // and screen reader users (Tab to reach, Enter or Space to press).
+  const playAction =
+    !isEditable && hasAction && component.action && onComponentAction
+      ? describeAction(component)
+      : null;
+  const runPlayAction = () => {
+    if (component.action && onComponentAction) {
+      onComponentAction(component.action, component.actionProps, component);
+    }
+  };
+
   const componentElement = (
     <div
       ref={elementRef}
       data-component-wrapper
+      data-play-action={playAction ? "" : undefined}
+      role={playAction?.role}
+      tabIndex={playAction ? 0 : undefined}
+      aria-label={playAction?.label}
+      aria-pressed={
+        playAction && component.action === "answerBox"
+          ? Boolean(isSelected)
+          : undefined
+      }
+      onKeyDown={
+        playAction
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                runPlayAction();
+              }
+            }
+          : undefined
+      }
       className={`absolute overflow-visible ${interactiveClass} ${isDragging ? "z-50 cursor-grabbing" : isResizing ? "z-50" : isEditable && isSelected ? "cursor-grab" : ""}`}
       style={{
         left: `${cssLeft}%`,
@@ -1817,6 +1849,8 @@ export default function PhonePreview({
   return (
     <div
       ref={previewWrapperRef}
+      // Quiz content keeps the creator's colours in the dashboard's dark mode.
+      data-theme-ignore
       className={`flex flex-col items-center justify-center ${className}`}
     >
       {/* Layout box sized to scaled dimensions to prevent stretching */}

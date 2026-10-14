@@ -3,8 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2, Share2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, Loader2, Share2, Trophy } from "lucide-react";
 import PhonePreview from "@/components/editor/PhonePreview";
+import LeaderboardDialog from "@/components/quiz/LeaderboardDialog";
+import {
+  answerIndexForKey,
+  buildPageAnnouncement,
+  getAnswerTargets,
+  getPageHeadline,
+} from "@/lib/playA11y";
+import {
+  formatCountdown,
+  formatScheduleDate,
+  getScheduleState,
+} from "../../../../convex/quizSchedule";
 import { Button } from "@/components/ui/button";
 import { api } from "../../../../convex/_generated/api";
 import type {
@@ -151,6 +163,8 @@ export default function PlayQuizPage() {
   const isPreviewMode = playSurface === "preview";
   const playSource = searchParams?.get("source");
   const returnTo = searchParams?.get("returnTo");
+  // Embedded on another site via the share dialog's <iframe> snippet.
+  const isEmbed = searchParams?.get("embed") === "1";
 
   // Saved progress from an earlier visit (public play only). If present, the
   // player continues the same session instead of starting a new one.
@@ -167,6 +181,7 @@ export default function PlayQuizPage() {
     return createClientSessionId(playSurface, crypto.randomUUID());
   });
   const [isSharing, setIsSharing] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   // Knowledge quizzes: right/wrong highlight after answering, and final score.
   const [answerFeedbackById, setAnswerFeedbackById] = useState<Record<
     string,
@@ -320,6 +335,22 @@ export default function PlayQuizPage() {
       loop: typeof props.loop === "boolean" ? props.loop : true,
     };
   }, [displayComponents]);
+
+  // Scheduled quizzes: re-check every second while a countdown is showing.
+  const schedule = quizQuery as
+    | { opensAt?: number; closesAt?: number }
+    | null
+    | undefined;
+  const [scheduleNow, setScheduleNow] = useState(() => Date.now());
+  const scheduleState = schedule
+    ? getScheduleState(schedule, scheduleNow)
+    : "open";
+  const isScheduleBlocked = !isPreviewMode && scheduleState !== "open";
+  useEffect(() => {
+    if (!schedule?.opensAt && !schedule?.closesAt) return;
+    const timer = window.setInterval(() => setScheduleNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [schedule?.opensAt, schedule?.closesAt]);
 
   const isLoading = quizQuery === undefined;
   const quizNotFound = quizQuery === null;
@@ -1510,6 +1541,104 @@ export default function PlayQuizPage() {
     ],
   );
 
+  // ---- Accessibility: announcements, number-key answers, focus ----
+  const [announcement, setAnnouncement] = useState("");
+  const keyboardUserRef = useRef(false);
+  const displayPageId = displayPage ? String(displayPage._id) : null;
+
+  // Tell screen readers which page is showing.
+  useEffect(() => {
+    if (!displayPageId || isScheduleBlocked) return;
+    setAnnouncement(
+      buildPageAnnouncement({
+        kind: shouldShowOnboarding
+          ? "onboarding"
+          : quizCompleted
+            ? "result"
+            : "question",
+        headline: getPageHeadline(displayComponents),
+        questionNumber: currentPageIndex + 1,
+        totalQuestions,
+      }),
+    );
+    // Announce once per page, not on every component update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayPageId, quizCompleted]);
+
+  // Knowledge quizzes: say whether the answer was right.
+  useEffect(() => {
+    if (!answerFeedbackById) return;
+    const values = Object.values(answerFeedbackById);
+    if (values.length === 0) return;
+    setAnnouncement(
+      values.includes("incorrect")
+        ? "Not quite. The correct answer is highlighted."
+        : "Correct!",
+    );
+  }, [answerFeedbackById]);
+
+  // Keyboard users land on the first button of each new page.
+  useEffect(() => {
+    const onKeyDown = () => {
+      keyboardUserRef.current = true;
+    };
+    const onPointerDown = () => {
+      keyboardUserRef.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+  useEffect(() => {
+    if (!displayPageId || !keyboardUserRef.current) return;
+    const timer = window.setTimeout(() => {
+      const first = document.querySelector<HTMLElement>("[data-play-action]");
+      first?.focus();
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [displayPageId]);
+
+  // Press 1-9 to pick the matching answer on a question page.
+  useEffect(() => {
+    if (shouldShowOnboarding || quizCompleted) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      ) {
+        return;
+      }
+      const index = answerIndexForKey(event);
+      if (index === null) return;
+      const answer = getAnswerTargets(displayComponents)[index];
+      if (!answer?.action) return;
+      event.preventDefault();
+      void handleComponentAction(
+        answer.action,
+        answer.actionProps,
+        answer,
+      );
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    displayComponents,
+    handleComponentAction,
+    quizCompleted,
+    shouldShowOnboarding,
+  ]);
+
+  const liveRegion = (
+    <div className="sr-only" aria-live="polite" aria-atomic="true">
+      {announcement}
+    </div>
+  );
+
   const handleBackNavigation = useCallback(() => {
     const fallbackHref =
       playSource === "discover"
@@ -1568,7 +1697,27 @@ export default function PlayQuizPage() {
       </Button>
     ) : null;
 
-  const backButton = (
+  const showLeaderboard =
+    quizCompleted &&
+    !!resultPage &&
+    !isCalculatingResults &&
+    isKnowledgeQuiz &&
+    (quizQuery as { leaderboardEnabled?: boolean } | null | undefined)
+      ?.leaderboardEnabled !== false;
+
+  const leaderboardButton =
+    showLeaderboard && quizQuery ? (
+      <Button
+        size="sm"
+        className="fixed bottom-6 left-4 z-30 gap-2 rounded-full bg-amber-400 px-4 font-semibold text-slate-950 shadow-lg hover:bg-amber-300"
+        onClick={() => setIsLeaderboardOpen(true)}
+      >
+        <Trophy className="h-4 w-4" />
+        Leaderboard
+      </Button>
+    ) : null;
+
+  const backButton = isEmbed ? null : (
     <Button
       variant="ghost"
       size="sm"
@@ -1600,6 +1749,55 @@ export default function PlayQuizPage() {
         <div className="rounded-2xl bg-white/10 px-6 py-8 text-center text-white/80">
           <h1 className="text-xl font-semibold">{missingState.title}</h1>
           <p className="mt-2 text-sm">{missingState.description}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Players who haven't started see the schedule instead of the quiz. Anyone
+  // already playing when it closes can still finish.
+  if (isScheduleBlocked && !quizStarted && !quizCompleted && quizQuery) {
+    const opensAt = schedule?.opensAt;
+    const closesAt = schedule?.closesAt;
+    const isUpcoming = scheduleState === "upcoming";
+    return (
+      <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-black px-4">
+        {backButton}
+        <div
+          className="w-full max-w-sm space-y-5 rounded-3xl bg-white/10 p-8 text-center text-white shadow-xl"
+          role="status"
+        >
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+            <CalendarClock className="h-7 w-7 text-emerald-300" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">{quizQuery.title}</h1>
+            <p className="text-sm text-white/70">
+              {isUpcoming && opensAt
+                ? `This quiz opens ${formatScheduleDate(opensAt)}.`
+                : closesAt
+                  ? `This quiz closed ${formatScheduleDate(closesAt)}.`
+                  : "This quiz isn't open right now."}
+            </p>
+          </div>
+          {isUpcoming && opensAt ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                Starts in
+              </p>
+              <p
+                className="mt-1 text-4xl font-bold tabular-nums text-emerald-300"
+                aria-live="off"
+              >
+                {formatCountdown(opensAt - scheduleNow)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-white/60">
+              Thanks for your interest. Check with the creator for the next
+              one.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -1703,20 +1901,38 @@ export default function PlayQuizPage() {
   return (
     <div className="fixed inset-0 h-screen min-h-[100dvh] w-full overflow-hidden overscroll-none bg-black">
       <audio ref={bgmAudioRef} preload="auto" />
+      {liveRegion}
       {backButton}
       {shareButton}
+      {leaderboardButton}
+      {showLeaderboard && quizQuery ? (
+        <LeaderboardDialog
+          quizId={quizQuery._id}
+          quizTitle={quizQuery.title}
+          sessionId={sessionId}
+          isPreview={isPreviewMode}
+          open={isLeaderboardOpen}
+          onOpenChange={setIsLeaderboardOpen}
+        />
+      ) : null}
       {isDesktopViewport === null ? null : isDesktopViewport ? (
         <div className="grid h-screen grid-cols-3 bg-black">
           <div />
-          <div className="flex h-screen flex-col items-center justify-center">
+          <main
+            aria-label={quizQuery?.title ?? "Quiz"}
+            className="flex h-screen flex-col items-center justify-center"
+          >
             {quizFrame ?? emptyState}
-          </div>
+          </main>
           <div />
         </div>
       ) : (
-        <div className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none">
+        <main
+          aria-label={quizQuery?.title ?? "Quiz"}
+          className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none"
+        >
           {quizFrame ?? emptyState}
-        </div>
+        </main>
       )}
     </div>
   );
