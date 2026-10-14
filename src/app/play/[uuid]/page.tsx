@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2, Share2, Trophy } from "lucide-react";
+import { ArrowLeft, CalendarClock, Loader2, Share2, Trophy } from "lucide-react";
 import PhonePreview from "@/components/editor/PhonePreview";
 import LeaderboardDialog from "@/components/quiz/LeaderboardDialog";
+import {
+  formatCountdown,
+  formatScheduleDate,
+  getScheduleState,
+} from "../../../../convex/quizSchedule";
 import { Button } from "@/components/ui/button";
 import { api } from "../../../../convex/_generated/api";
 import type {
@@ -324,6 +329,22 @@ export default function PlayQuizPage() {
       loop: typeof props.loop === "boolean" ? props.loop : true,
     };
   }, [displayComponents]);
+
+  // Scheduled quizzes: re-check every second while a countdown is showing.
+  const schedule = quizQuery as
+    | { opensAt?: number; closesAt?: number }
+    | null
+    | undefined;
+  const [scheduleNow, setScheduleNow] = useState(() => Date.now());
+  const scheduleState = schedule
+    ? getScheduleState(schedule, scheduleNow)
+    : "open";
+  const isScheduleBlocked = !isPreviewMode && scheduleState !== "open";
+  useEffect(() => {
+    if (!schedule?.opensAt && !schedule?.closesAt) return;
+    const timer = window.setInterval(() => setScheduleNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [schedule?.opensAt, schedule?.closesAt]);
 
   const isLoading = quizQuery === undefined;
   const quizNotFound = quizQuery === null;
@@ -1624,6 +1645,55 @@ export default function PlayQuizPage() {
         <div className="rounded-2xl bg-white/10 px-6 py-8 text-center text-white/80">
           <h1 className="text-xl font-semibold">{missingState.title}</h1>
           <p className="mt-2 text-sm">{missingState.description}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Players who haven't started see the schedule instead of the quiz. Anyone
+  // already playing when it closes can still finish.
+  if (isScheduleBlocked && !quizStarted && !quizCompleted && quizQuery) {
+    const opensAt = schedule?.opensAt;
+    const closesAt = schedule?.closesAt;
+    const isUpcoming = scheduleState === "upcoming";
+    return (
+      <div className="flex h-screen w-full items-center justify-center overflow-hidden bg-black px-4">
+        {backButton}
+        <div
+          className="w-full max-w-sm space-y-5 rounded-3xl bg-white/10 p-8 text-center text-white shadow-xl"
+          role="status"
+        >
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+            <CalendarClock className="h-7 w-7 text-emerald-300" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">{quizQuery.title}</h1>
+            <p className="text-sm text-white/70">
+              {isUpcoming && opensAt
+                ? `This quiz opens ${formatScheduleDate(opensAt)}.`
+                : closesAt
+                  ? `This quiz closed ${formatScheduleDate(closesAt)}.`
+                  : "This quiz isn't open right now."}
+            </p>
+          </div>
+          {isUpcoming && opensAt ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">
+                Starts in
+              </p>
+              <p
+                className="mt-1 text-4xl font-bold tabular-nums text-emerald-300"
+                aria-live="off"
+              >
+                {formatCountdown(opensAt - scheduleNow)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-white/60">
+              Thanks for your interest. Check with the creator for the next
+              one.
+            </p>
+          )}
         </div>
       </div>
     );

@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ImageIcon, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { CalendarClock, ImageIcon, Loader2, Plus, Sparkles, X } from "lucide-react";
 import EditorPreviewPanel from "./EditorPreviewPanel";
 import RenamePageDialog from "./RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
@@ -26,6 +26,11 @@ import { usePageEditor } from "@/hooks/usePageEditor";
 import { useTemplates } from "@/hooks/useTemplates";
 import { useGenerateCover } from "@/hooks/useGenerateCover";
 import { coverTitle, pickCoverTheme } from "@/lib/coverTheme";
+import {
+  fromDateTimeLocalValue,
+  toDateTimeLocalValue,
+  validateSchedule,
+} from "../../../../../convex/quizSchedule";
 import type { Component, PageEntity } from "@/types";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -44,6 +49,8 @@ type QuizBasicInfo = {
   shuffleQuestions?: boolean;
   quizType?: QuizType;
   leaderboardEnabled?: boolean;
+  opensAt?: number;
+  closesAt?: number;
 };
 
 type QuizType = "personality" | "knowledge";
@@ -70,6 +77,8 @@ type BasicInfoForm = {
   shuffleQuestions: boolean;
   quizType: QuizType;
   leaderboardEnabled: boolean;
+  opensAt: number | null;
+  closesAt: number | null;
 };
 
 const QUIZ_TOPICS: Array<{ value: QuizTopic; label: string }> = [
@@ -119,6 +128,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
     shuffleQuestions: false,
     quizType: "personality",
     leaderboardEnabled: true,
+    opensAt: null,
+    closesAt: null,
   });
 
   const quizInfo = quizQuery as (typeof quizQuery & QuizBasicInfo) | undefined;
@@ -166,6 +177,8 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
       shuffleQuestions: quizInfo.shuffleQuestions === true,
       quizType: quizInfo.quizType === "knowledge" ? "knowledge" : "personality",
       leaderboardEnabled: quizInfo.leaderboardEnabled !== false,
+      opensAt: quizInfo.opensAt ?? null,
+      closesAt: quizInfo.closesAt ?? null,
     });
   }, [quizInfo]);
 
@@ -237,7 +250,7 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
 
       setIsSavingBasicInfo(true);
       try {
-        await updateQuiz({
+        const result = await updateQuiz({
           id: quizId,
           description: nextInfo.description.trim(),
           tags: nextInfo.tags,
@@ -248,7 +261,12 @@ export default function OnboardingTab({ quizId }: OnboardingTabProps) {
           shuffleQuestions: nextInfo.shuffleQuestions,
           quizType: nextInfo.quizType,
           leaderboardEnabled: nextInfo.leaderboardEnabled,
+          opensAt: nextInfo.opensAt,
+          closesAt: nextInfo.closesAt,
         });
+        if (result && result.ok === false && result.message) {
+          toast.error(result.message);
+        }
       } catch (error) {
         console.error("Failed to update quiz info:", error);
         toast.error("Failed to save quiz info");
@@ -769,6 +787,13 @@ function QuizBasicInfoSidebar({
           </label>
         </div>
 
+        <QuizScheduleFields
+          value={value}
+          onChange={onChange}
+          onSave={onSave}
+          isSaving={isSaving}
+        />
+
         <div className="space-y-2">
           <Label htmlFor="quiz-brand-name">Brand Name</Label>
           <Input
@@ -886,5 +911,86 @@ function QuizBasicInfoSidebar({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function QuizScheduleFields({
+  value,
+  onChange,
+  onSave,
+  isSaving,
+}: {
+  value: BasicInfoForm;
+  onChange: (value: BasicInfoForm) => void;
+  onSave: (value?: BasicInfoForm) => void;
+  isSaving: boolean;
+}) {
+  const error = validateSchedule({
+    opensAt: value.opensAt,
+    closesAt: value.closesAt,
+  });
+
+  const update = (field: "opensAt" | "closesAt", timestamp: number | null) => {
+    const nextValue = { ...value, [field]: timestamp };
+    onChange(nextValue);
+    if (!validateSchedule(nextValue)) onSave(nextValue);
+  };
+
+  const field = (
+    id: string,
+    label: string,
+    key: "opensAt" | "closesAt",
+  ) => (
+    <div className="space-y-1">
+      <Label htmlFor={id} className="text-xs text-gray-600">
+        {label}
+      </Label>
+      <div className="flex items-center gap-1.5">
+        <Input
+          id={id}
+          type="datetime-local"
+          value={toDateTimeLocalValue(value[key])}
+          disabled={isSaving}
+          onChange={(event) =>
+            update(key, fromDateTimeLocalValue(event.target.value))
+          }
+          className="h-9 min-w-0 flex-1 text-sm"
+        />
+        {value[key] !== null ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 text-gray-400 hover:text-red-600"
+            onClick={() => update(key, null)}
+            disabled={isSaving}
+            aria-label={`Clear ${label.toLowerCase()} time`}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <CalendarClock className="h-4 w-4 text-gray-500" />
+        Schedule
+      </Label>
+      <div className="space-y-2 rounded-md border border-gray-200 px-3 py-2">
+        {field("quiz-opens-at", "Opens", "opensAt")}
+        {field("quiz-closes-at", "Closes", "closesAt")}
+        {error ? (
+          <p className="text-xs font-medium text-red-600">{error}</p>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Optional. Once published, players can only start the quiz between
+            these times. Leave blank to keep it open.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

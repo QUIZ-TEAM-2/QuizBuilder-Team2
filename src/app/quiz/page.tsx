@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { getScheduleBadge } from "../../../convex/quizSchedule";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import {
   GitBranch,
   LinkIcon,
   QrCode,
+  Clock,
 } from "lucide-react";
 import type { Id, Component } from "@/types";
 import ConvexUserButton from "@/components/auth/convex-user-button";
@@ -67,6 +69,8 @@ interface QuizWithPreview {
   pageCount?: number;
   resultCount?: number;
   publishVersion?: number;
+  opensAt?: number;
+  closesAt?: number;
   pageIds?: Id<"pages">[];
   resultIds?: Id<"results">[];
   onboardingPageId?: Id<"pages">;
@@ -96,6 +100,26 @@ function QuizTitleHeading({
         </span>
       ) : null}
     </span>
+  );
+}
+
+const SCHEDULE_BADGE_CLASSES = {
+  upcoming: "bg-amber-50 text-amber-700",
+  closing: "bg-sky-50 text-sky-700",
+  ended: "bg-slate-200 text-slate-600",
+} as const;
+
+function ScheduleBadgeChip({ quiz }: { quiz: QuizWithPreview }) {
+  const badge = getScheduleBadge(quiz.status, quiz, Date.now());
+  if (!badge) return null;
+  return (
+    <Badge
+      variant="outline"
+      className={`border-0 text-xs ${SCHEDULE_BADGE_CLASSES[badge.tone]}`}
+    >
+      <Clock className="mr-1 h-3 w-3" />
+      {badge.label}
+    </Badge>
   );
 }
 
@@ -687,6 +711,7 @@ function AuthenticatedQuizContent() {
                       >
                         {getQuizStatusLabel(quiz.status)}
                       </Badge>
+                      <ScheduleBadgeChip quiz={quiz} />
 
 
                       <Badge

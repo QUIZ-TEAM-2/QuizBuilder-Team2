@@ -28,6 +28,7 @@ import type * as leaderboardRules from "../leaderboardRules.js";
 import type * as quiz from "../quiz.js";
 import type * as quizAccessRules from "../quizAccessRules.js";
 import type * as quizPlay from "../quizPlay.js";
+import type * as quizSchedule from "../quizSchedule.js";
 import type * as schemas from "../schemas.js";
 import type * as sendgridOtp from "../sendgridOtp.js";
 import type * as templates from "../templates.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   quiz: typeof quiz;
   quizAccessRules: typeof quizAccessRules;
   quizPlay: typeof quizPlay;
+  quizSchedule: typeof quizSchedule;
   schemas: typeof schemas;
   sendgridOtp: typeof sendgridOtp;
   templates: typeof templates;

@@ -67,6 +67,9 @@ export default defineSchema({
     quizType: v.optional(v.union(v.literal("personality"), v.literal("knowledge"))),
     /** Knowledge quizzes: show the leaderboard after finishing (on unless false). */
     leaderboardEnabled: v.optional(v.boolean()),
+    /** Optional play window for a published quiz (ms timestamps). */
+    opensAt: v.optional(v.number()),
+    closesAt: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])

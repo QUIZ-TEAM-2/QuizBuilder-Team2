@@ -21,6 +21,7 @@ import {
   getPublishedQuizEditBlockMessage,
 } from "./quizAccessRules";
 import type { Id, Doc } from "./_generated/dataModel";
+import { validateSchedule } from "./quizSchedule";
 
 type PageType = "page" | "result" | "onboarding";
 type PageAction =
@@ -576,6 +577,8 @@ export const getPublishedQuizzes = query({
           brandName: quiz.brandName ?? DEFAULT_BRAND_NAME,
           brandAvatar: quiz.brandAvatar,
           coverImage: quiz.coverImage,
+          opensAt: quiz.opensAt,
+          closesAt: quiz.closesAt,
 
           _creationTime: quiz._creationTime,
           publishedAt: quiz.publishedAt,
@@ -715,6 +718,9 @@ export const updateQuiz = mutation({
       v.union(v.literal("personality"), v.literal("knowledge")),
     ),
     leaderboardEnabled: v.optional(v.boolean()),
+    /** A timestamp sets the time; null clears it. */
+    opensAt: v.optional(v.union(v.number(), v.null())),
+    closesAt: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -749,6 +755,8 @@ export const updateQuiz = mutation({
       shuffleQuestions: boolean;
       quizType: "personality" | "knowledge";
       leaderboardEnabled: boolean;
+      opensAt: number | undefined;
+      closesAt: number | undefined;
     }> = {};
 
     if (args.title !== undefined) {
@@ -793,6 +801,20 @@ export const updateQuiz = mutation({
     if (args.quizType !== undefined) updateData.quizType = args.quizType;
     if (args.leaderboardEnabled !== undefined)
       updateData.leaderboardEnabled = args.leaderboardEnabled;
+    if (args.opensAt !== undefined || args.closesAt !== undefined) {
+      const opensAt =
+        args.opensAt === undefined ? quiz.opensAt : (args.opensAt ?? undefined);
+      const closesAt =
+        args.closesAt === undefined
+          ? quiz.closesAt
+          : (args.closesAt ?? undefined);
+      const scheduleError = validateSchedule({ opensAt, closesAt });
+      if (scheduleError) {
+        return { ok: false, message: scheduleError };
+      }
+      updateData.opensAt = opensAt;
+      updateData.closesAt = closesAt;
+    }
 
     await ctx.db.patch(args.id, { ...updateData, updatedAt: Date.now() });
     return {

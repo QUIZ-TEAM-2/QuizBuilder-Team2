@@ -1,4 +1,5 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { getScheduleState } from "./quizSchedule";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -167,6 +168,14 @@ export const startQuizSession = mutation({
     // No auth required - anyone can play quizzes
     const userId = await getAuthUserId(ctx);
     const quiz = await ctx.db.get(args.quizId);
+    // Preview runs ("demo_" sessions) ignore the schedule so owners can test.
+    if (
+      quiz &&
+      !args.sessionId.startsWith("demo_") &&
+      getScheduleState(quiz, Date.now()) !== "open"
+    ) {
+      throw new ConvexError("This quiz isn't open right now.");
+    }
     const publishVersion =
       quiz &&
       typeof (quiz as { publishVersion?: unknown }).publishVersion === "number"
