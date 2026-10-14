@@ -27,7 +27,9 @@ function renderImageComponent({
       ? component.props.opacity
       : DEFAULT_IMAGE_OPACITY;
 
-  return <ImageView src={component.data ?? ""} opacity={opacity} />;
+  const alt =
+    typeof component.props?.alt === "string" ? component.props.alt : "";
+  return <ImageView src={component.data ?? ""} opacity={opacity} alt={alt} />;
 }
 
 const manifest: ComponentManifest<ImageComponent> = {

@@ -7,6 +7,12 @@ import { ArrowLeft, CalendarClock, Loader2, Share2, Trophy } from "lucide-react"
 import PhonePreview from "@/components/editor/PhonePreview";
 import LeaderboardDialog from "@/components/quiz/LeaderboardDialog";
 import {
+  answerIndexForKey,
+  buildPageAnnouncement,
+  getAnswerTargets,
+  getPageHeadline,
+} from "@/lib/playA11y";
+import {
   formatCountdown,
   formatScheduleDate,
   getScheduleState,
@@ -1535,6 +1541,104 @@ export default function PlayQuizPage() {
     ],
   );
 
+  // ---- Accessibility: announcements, number-key answers, focus ----
+  const [announcement, setAnnouncement] = useState("");
+  const keyboardUserRef = useRef(false);
+  const displayPageId = displayPage ? String(displayPage._id) : null;
+
+  // Tell screen readers which page is showing.
+  useEffect(() => {
+    if (!displayPageId || isScheduleBlocked) return;
+    setAnnouncement(
+      buildPageAnnouncement({
+        kind: shouldShowOnboarding
+          ? "onboarding"
+          : quizCompleted
+            ? "result"
+            : "question",
+        headline: getPageHeadline(displayComponents),
+        questionNumber: currentPageIndex + 1,
+        totalQuestions,
+      }),
+    );
+    // Announce once per page, not on every component update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayPageId, quizCompleted]);
+
+  // Knowledge quizzes: say whether the answer was right.
+  useEffect(() => {
+    if (!answerFeedbackById) return;
+    const values = Object.values(answerFeedbackById);
+    if (values.length === 0) return;
+    setAnnouncement(
+      values.includes("incorrect")
+        ? "Not quite. The correct answer is highlighted."
+        : "Correct!",
+    );
+  }, [answerFeedbackById]);
+
+  // Keyboard users land on the first button of each new page.
+  useEffect(() => {
+    const onKeyDown = () => {
+      keyboardUserRef.current = true;
+    };
+    const onPointerDown = () => {
+      keyboardUserRef.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+  useEffect(() => {
+    if (!displayPageId || !keyboardUserRef.current) return;
+    const timer = window.setTimeout(() => {
+      const first = document.querySelector<HTMLElement>("[data-play-action]");
+      first?.focus();
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [displayPageId]);
+
+  // Press 1-9 to pick the matching answer on a question page.
+  useEffect(() => {
+    if (shouldShowOnboarding || quizCompleted) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      ) {
+        return;
+      }
+      const index = answerIndexForKey(event);
+      if (index === null) return;
+      const answer = getAnswerTargets(displayComponents)[index];
+      if (!answer?.action) return;
+      event.preventDefault();
+      void handleComponentAction(
+        answer.action,
+        answer.actionProps,
+        answer,
+      );
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    displayComponents,
+    handleComponentAction,
+    quizCompleted,
+    shouldShowOnboarding,
+  ]);
+
+  const liveRegion = (
+    <div className="sr-only" aria-live="polite" aria-atomic="true">
+      {announcement}
+    </div>
+  );
+
   const handleBackNavigation = useCallback(() => {
     const fallbackHref =
       playSource === "discover"
@@ -1797,6 +1901,7 @@ export default function PlayQuizPage() {
   return (
     <div className="fixed inset-0 h-screen min-h-[100dvh] w-full overflow-hidden overscroll-none bg-black">
       <audio ref={bgmAudioRef} preload="auto" />
+      {liveRegion}
       {backButton}
       {shareButton}
       {leaderboardButton}
@@ -1813,15 +1918,21 @@ export default function PlayQuizPage() {
       {isDesktopViewport === null ? null : isDesktopViewport ? (
         <div className="grid h-screen grid-cols-3 bg-black">
           <div />
-          <div className="flex h-screen flex-col items-center justify-center">
+          <main
+            aria-label={quizQuery?.title ?? "Quiz"}
+            className="flex h-screen flex-col items-center justify-center"
+          >
             {quizFrame ?? emptyState}
-          </div>
+          </main>
           <div />
         </div>
       ) : (
-        <div className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none">
+        <main
+          aria-label={quizQuery?.title ?? "Quiz"}
+          className="fixed inset-0 h-[100dvh] min-h-[100dvh] w-full overflow-hidden overscroll-none"
+        >
           {quizFrame ?? emptyState}
-        </div>
+        </main>
       )}
     </div>
   );

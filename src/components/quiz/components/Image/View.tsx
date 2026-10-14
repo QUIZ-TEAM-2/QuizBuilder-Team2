@@ -7,9 +7,11 @@ import { ImageIcon } from "lucide-react";
 export interface ImageViewProps {
   src: string;
   opacity?: number;
+  /** Describes the image for screen readers. Empty means decorative. */
+  alt?: string;
 }
 
-export function ImageView({ src, opacity = 100 }: ImageViewProps) {
+export function ImageView({ src, opacity = 100, alt = "" }: ImageViewProps) {
   const opacityValue = Math.min(100, Math.max(0, opacity)) / 100;
 
   // Show placeholder when no image is set
@@ -25,7 +27,7 @@ export function ImageView({ src, opacity = 100 }: ImageViewProps) {
     <div className="relative h-full w-full">
       <Image
         src={src}
-        alt="image"
+        alt={alt}
         fill
         sizes="100vw"
         className="object-contain object-center"

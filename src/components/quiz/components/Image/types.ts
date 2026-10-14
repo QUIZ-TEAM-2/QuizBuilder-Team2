@@ -7,6 +7,8 @@ export interface ImageComponent extends Component {
     width?: number;
     height?: number;
     opacity?: number;
+    /** Alt text for screen readers. */
+    alt?: string;
   } & Record<string, unknown>;
 }
 

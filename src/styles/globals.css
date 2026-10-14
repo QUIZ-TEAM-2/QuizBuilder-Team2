@@ -663,3 +663,20 @@
     }
   }
 }
+
+/* Quiz player: a focus ring that shows up on any quiz background. */
+.play-action:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.85);
+  border-radius: 12px;
+}
+
+/* Respect the "reduce motion" setting: no slide or fade between pages. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="ppt-"],
+  .play-action {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
