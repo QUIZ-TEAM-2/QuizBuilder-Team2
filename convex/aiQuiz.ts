@@ -2,7 +2,17 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { action, internalMutation } from "./_generated/server";
+import { action, internalMutation, internalQuery } from "./_generated/server";
+import {
+  REGEN_INSTRUCTION_MAX_LENGTH,
+  buildComponentUpdates,
+  buildRegenPrompt,
+  buildRegenSchema,
+  findQuestionParts,
+  parseRegeneratedQuestion,
+  type RegenComponent,
+  type RegeneratedQuestion,
+} from "./aiQuestionRegen";
 import {
   AI_QUIZ_LIMITS,
   buildOnboardingLayout,
@@ -28,8 +38,12 @@ class RetryableAiError extends Error {}
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
-const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models";
+/** GEMINI_API_BASE_URL lets you point at a proxy (or a fake server in tests). */
+const geminiEndpoint = () =>
+  (
+    process.env.GEMINI_API_BASE_URL?.trim() ||
+    "https://generativelanguage.googleapis.com/v1beta/models"
+  ).replace(/\/+$/, "");
 
 async function requestDraft(
   apiKey: string,
@@ -37,10 +51,29 @@ async function requestDraft(
   topic: string,
   counts: AiQuizCounts,
 ): Promise<unknown> {
+  return requestGemini(apiKey, model, {
+    prompt: buildPrompt(topic, counts),
+    schema: buildResponseSchema(),
+    temperature: 0.9,
+    blockedMessage:
+      "The AI couldn't write a quiz about that topic. Try rewording it.",
+  });
+}
+
+async function requestGemini(
+  apiKey: string,
+  model: string,
+  request: {
+    prompt: string;
+    schema: unknown;
+    temperature: number;
+    blockedMessage: string;
+  },
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(
-      `${GEMINI_ENDPOINT}/${encodeURIComponent(model)}:generateContent`,
+      `${geminiEndpoint()}/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
         headers: {
@@ -48,13 +81,11 @@ async function requestDraft(
           "x-goog-api-key": apiKey,
         },
         body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: buildPrompt(topic, counts) }] },
-          ],
+          contents: [{ role: "user", parts: [{ text: request.prompt }] }],
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: buildResponseSchema(),
-            temperature: 0.9,
+            responseSchema: request.schema,
+            temperature: request.temperature,
           },
         }),
       },
@@ -96,9 +127,7 @@ async function requestDraft(
     promptFeedback?: { blockReason?: string };
   };
   if (payload.promptFeedback?.blockReason) {
-    throw new ConvexError(
-      "The AI couldn't write a quiz about that topic. Try rewording it.",
-    );
+    throw new ConvexError(request.blockedMessage);
   }
   const text = (payload.candidates?.[0]?.content?.parts ?? [])
     .map((part) => part.text ?? "")
@@ -305,5 +334,208 @@ export const createQuizFromDraft = internalMutation({
       updatedAt: Date.now(),
     });
     return quizId;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Regenerate one question
+// ---------------------------------------------------------------------------
+
+type RegenPageContext = {
+  quizTitle: string;
+  quizDescription?: string;
+  quizType: "personality" | "knowledge";
+  results: Array<{ id: string; name: string }>;
+  components: RegenComponent[];
+  otherQuestions: string[];
+};
+
+/** Everything the AI needs about one question page. Owner or admin only. */
+export const getRegenContext = internalQuery({
+  args: { pageId: v.id("pages"), userId: v.id("users") },
+  handler: async (ctx, args): Promise<RegenPageContext | { error: string }> => {
+    const page = await ctx.db.get(args.pageId);
+    const quiz = page ? await ctx.db.get(page.quizId) : null;
+    if (!page || !quiz) return { error: "That question page no longer exists." };
+    const user = await ctx.db.get(args.userId);
+    if (quiz.userId !== args.userId && user?.role !== "admin") {
+      return { error: "You can only edit your own quizzes." };
+    }
+    if (quiz.status === "published") {
+      return { error: "Pause the quiz before editing its questions." };
+    }
+
+    const componentsFor = async (pageId: string) =>
+      (await ctx.db
+        .query("components")
+        .withIndex("by_pageId", (q) => q.eq("pageId", pageId))
+        .collect()) as unknown as RegenComponent[];
+
+    const results: Array<{ id: string; name: string }> = [];
+    for (const [index, resultId] of quiz.resultIds.entries()) {
+      const result = await ctx.db.get(resultId);
+      if (result) {
+        results.push({
+          id: String(resultId),
+          name: result.pageName?.trim() || `Result ${index + 1}`,
+        });
+      }
+    }
+
+    const otherQuestions: string[] = [];
+    for (const otherId of quiz.pageIds) {
+      if (otherId === args.pageId) continue;
+      const parts = findQuestionParts(await componentsFor(String(otherId)));
+      if (!("error" in parts) && parts.question.data) {
+        otherQuestions.push(parts.question.data.trim());
+      }
+    }
+
+    return {
+      quizTitle: quiz.title,
+      quizDescription: quiz.description,
+      quizType: quiz.quizType === "knowledge" ? "knowledge" : "personality",
+      results,
+      components: await componentsFor(String(args.pageId)),
+      otherQuestions,
+    };
+  },
+});
+
+export const applyQuestionUpdates = internalMutation({
+  args: {
+    pageId: v.id("pages"),
+    updates: v.array(
+      v.object({
+        id: v.id("components"),
+        data: v.string(),
+        actionProps: v.optional(v.any()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    for (const update of args.updates) {
+      const component = await ctx.db.get(update.id);
+      // Skip anything deleted or moved off the page while the AI was working.
+      if (!component || component.pageId !== String(args.pageId)) continue;
+      await ctx.db.patch(update.id, {
+        data: update.data,
+        ...(update.actionProps !== undefined
+          ? { actionProps: update.actionProps as unknown }
+          : {}),
+      });
+    }
+    const page = await ctx.db.get(args.pageId);
+    if (page) {
+      await ctx.db.patch(page.quizId, { updatedAt: Date.now() });
+    }
+  },
+});
+
+/**
+ * Rewrites one question page's question and answers with Gemini, keeping the
+ * layout and styling. An optional instruction steers it ("make it funnier").
+ */
+export const regenerateQuestion = action({
+  args: { pageId: v.id("pages"), instruction: v.optional(v.string()) },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ question: string; answers: string[] }> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new ConvexError("Please sign in to use AI.");
+
+    const instruction = args.instruction?.replace(/\s+/g, " ").trim();
+    if (instruction && instruction.length > REGEN_INSTRUCTION_MAX_LENGTH) {
+      throw new ConvexError(
+        `Keep the instruction under ${REGEN_INSTRUCTION_MAX_LENGTH} characters.`,
+      );
+    }
+
+    const context = await ctx.runQuery(internal.aiQuiz.getRegenContext, {
+      pageId: args.pageId,
+      userId,
+    });
+    if ("error" in context) throw new ConvexError(context.error);
+
+    const parts = findQuestionParts(context.components);
+    if ("error" in parts) throw new ConvexError(parts.error);
+    if (context.quizType === "personality" && context.results.length === 0) {
+      throw new ConvexError("Add at least one result page first.");
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      throw new ConvexError(
+        "AI generation isn't set up yet: add GEMINI_API_KEY to the Convex environment variables.",
+      );
+    }
+    const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+    const fallbackModel =
+      process.env.GEMINI_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL;
+
+    const prompt = buildRegenPrompt({
+      quizTitle: context.quizTitle,
+      quizDescription: context.quizDescription,
+      quizType: context.quizType,
+      resultNames: context.results.map((result) => result.name),
+      currentQuestion: parts.question.data?.trim() ?? "",
+      currentAnswers: parts.answers.map((answer) => answer.data?.trim() ?? ""),
+      otherQuestions: context.otherQuestions,
+      instruction: instruction || undefined,
+    });
+
+    let regenerated: RegeneratedQuestion | null = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && !regenerated; attempt += 1) {
+      const attemptModel = attempt === MAX_ATTEMPTS - 1 ? fallbackModel : model;
+      try {
+        regenerated = parseRegeneratedQuestion(
+          await requestGemini(apiKey, attemptModel, {
+            prompt,
+            schema: buildRegenSchema(context.quizType),
+            temperature: 1,
+            blockedMessage:
+              "The AI couldn't rewrite that question. Try a different instruction.",
+          }),
+          {
+            quizType: context.quizType,
+            answerCount: parts.answers.length,
+            resultCount: context.results.length,
+          },
+        );
+      } catch (error) {
+        if (error instanceof ConvexError) throw error;
+        lastError = error;
+        if (attempt < MAX_ATTEMPTS - 1) await sleep(1500 * (attempt + 1));
+      }
+    }
+    if (!regenerated) {
+      console.error("AI question regeneration failed", lastError);
+      throw new ConvexError(
+        lastError instanceof RetryableAiError
+          ? "Google's AI is overloaded right now. Please try again in a minute."
+          : lastError instanceof Error && !(lastError instanceof SyntaxError)
+            ? lastError.message
+            : "The AI returned something we couldn't use. Please try again.",
+      );
+    }
+
+    const updates = buildComponentUpdates(parts, regenerated, {
+      quizType: context.quizType,
+      resultIds: context.results.map((result) => result.id),
+    });
+    await ctx.runMutation(internal.aiQuiz.applyQuestionUpdates, {
+      pageId: args.pageId,
+      updates: updates.map((update) => ({
+        ...update,
+        id: update.id as Id<"components">,
+      })),
+    });
+
+    return {
+      question: regenerated.question,
+      answers: regenerated.answers.map((answer) => answer.text),
+    };
   },
 });

@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as aiQuestionRegen from "../aiQuestionRegen.js";
 import type * as aiQuiz from "../aiQuiz.js";
 import type * as aiQuizDraft from "../aiQuizDraft.js";
 import type * as analytics from "../analytics.js";
@@ -38,6 +39,7 @@ import type * as templates from "../templates.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  aiQuestionRegen: typeof aiQuestionRegen;
   aiQuiz: typeof aiQuiz;
   aiQuizDraft: typeof aiQuizDraft;
   analytics: typeof analytics;

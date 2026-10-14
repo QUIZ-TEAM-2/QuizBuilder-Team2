@@ -12,6 +12,7 @@ import QuestionTypeChangeDialog from "./components/QuestionTypeChangeDialog";
 import RenamePageDialog from "./components/RenamePageDialog";
 import ImagePickerDialog from "@/components/quiz/ImagePickerDialog";
 import AudioPickerDialog from "@/components/quiz/AudioPickerDialog";
+import AiRegenerateQuestionButton from "@/components/quiz/AiRegenerateQuestionButton";
 import { usePageEditor } from "@/hooks/usePageEditor";
 import {
   getQuestionModeLabel,
@@ -482,6 +483,16 @@ export default function QuizPagesTab({
           void editor.handleUpdateTransitionEffect(effect)
         }
         transitionPreviewTarget={transitionPreviewTarget}
+        headerExtra={
+          currentPage &&
+          (questionMode === "single" || questionMode === "multiple") ? (
+            <AiRegenerateQuestionButton
+              key={currentPage._id}
+              pageId={currentPage._id}
+              onBeforeRegenerate={editor.handleDeselectComponent}
+            />
+          ) : null
+        }
       />
 
       <ImagePickerDialog
