@@ -11,6 +11,7 @@ import {
   textOnAccent,
   buildOnboardingLayout,
   buildQuestionLayout,
+  QUESTION_AREA,
   buildResultLayout,
   normalizeCounts,
   parseAiQuizDraft,
@@ -217,5 +218,54 @@ void describe("theme", () => {
     for (const accent of ["#facc15", "#10b981", "#7c3aed", "#ef4444"]) {
       assert.ok(contrastRatio(accent, textOnAccent(accent)) >= 3, accent);
     }
+  });
+});
+
+void describe("vertical balance", () => {
+  const makeDraft = (answers: number) =>
+    parseAiQuizDraft(
+      {
+        ...sample,
+        questions: [
+          {
+            question: "Pick one",
+            answers: Array.from({ length: answers }, (_, i) => ({
+              text: `Answer ${i + 1}`,
+              result: i % 3,
+            })),
+          },
+        ],
+      },
+      { questions: 1, results: 3, answers },
+    );
+
+  for (const answers of [2, 3, 4]) {
+    void it(`centres the question and ${answers} answers under the progress dots`, () => {
+      const layout = buildQuestionLayout(makeDraft(answers), 0);
+      const content = layout.filter(
+        (spec) => !spec.decorative && spec.type !== "progressBar",
+      );
+      const top = Math.min(...content.map((spec) => spec.position.y));
+      const bottom = Math.max(
+        ...content.map((spec) => spec.position.y + spec.position.height),
+      );
+      assert.ok(top >= QUESTION_AREA.top, `top ${top}`);
+      assert.ok(bottom <= QUESTION_AREA.bottom, `bottom ${bottom}`);
+      const spaceAbove = top - QUESTION_AREA.top;
+      const spaceBelow = QUESTION_AREA.bottom - bottom;
+      assert.ok(Math.abs(spaceAbove - spaceBelow) < 0.5, `${spaceAbove} vs ${spaceBelow}`);
+      // Little empty space at the bottom (a bit more is fine with only 2 answers).
+      assert.ok(100 - bottom <= (answers >= 3 ? 20 : 25), `bottom gap ${100 - bottom}`);
+    });
+  }
+
+  void it("keeps the result page content inside the screen", () => {
+    const layout = buildResultLayout(makeDraft(3), 0).filter(
+      (spec) => !spec.decorative,
+    );
+    const bottom = Math.max(
+      ...layout.map((spec) => spec.position.y + spec.position.height),
+    );
+    assert.ok(bottom <= QUESTION_AREA.bottom && bottom >= 75, `bottom ${bottom}`);
   });
 });
