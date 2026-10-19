@@ -154,14 +154,20 @@ Deployment is automatic; there is nothing to run by hand.
 - **Previews:** every pull request gets a Vercel preview build. It uses a Convex **preview deploy key**, so each preview runs against its own fresh Convex backend.
 
 ### Configuration
-
 | Where                            | Variable                                                                                                                                                                                                 | Scope                   |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | Vercel                           | `CONVEX_DEPLOY_KEY` (production deploy key)                                                                                                                                                              | Production only         |
 | Vercel                           | `CONVEX_DEPLOY_KEY` (preview deploy key)                                                                                                                                                                 | Preview only            |
 | Convex project, default env vars | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`                                                                                                                                                                    | Development and Preview |
-| Convex production deployment     | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_BOOTSTRAP_SECRET`; optionally `AUTH_SENDGRID_API_KEY` and `AUTH_SENDGRID_FROM` to require email verification codes | Production              |
+| Convex production deployment     | `JWT_PRIVATE_KEY`, `JWKS`, `SITE_URL`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `ADMIN_BOOTSTRAP_SECRET`, `GEMINI_API_KEY`; optionally `AUTH_SENDGRID_API_KEY` and `AUTH_SENDGRID_FROM` to require email verification codes | Production              |
+| Any Convex deployment (optional) | `GEMINI_MODEL` (default `gemini-flash-latest`), `GEMINI_FALLBACK_MODEL` (default `gemini-flash-lite-latest`)                                                                                             | Any                     |
+### AI features
 
+The AI quiz generator, AI rewrite and AI cover images use the Google Gemini API. They need `GEMINI_API_KEY` set on the Convex deployment. Without it, the rest of the app works normally and the AI buttons show an error. To use AI on your own dev deployment:
+
+    npx convex env set GEMINI_API_KEY your-key-here
+
+The free Gemini tier has per-minute and daily limits. When a request fails, the app retries automatically and switches to the fallback model on the last attempt. For heavier use, switch to a paid key by changing `GEMINI_API_KEY`. No code changes are needed.
 Never use the production deploy key for Preview builds: Convex refuses it on purpose so a pull request can't overwrite the live backend.
 
 ## License
